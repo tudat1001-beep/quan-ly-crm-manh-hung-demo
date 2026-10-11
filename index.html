@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo đầy đủ — Quản lý CRM Mạnh Hùng</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="demo-extra.css">
+</head>
+<body>
+  <div class="demo-ribbon">BẢN DEMO INTERNET — ĐẦY ĐỦ CHỨC NĂNG — DỮ LIỆU MẪU KHÔNG LƯU VÀO MÁY</div>
+  <div class="app-shell demo-shell">
+    <aside class="sidebar">
+      <div class="brand"><img src="logo.jpg" alt="Logo"><div><strong>MẠNH HÙNG</strong><span>Quản lý kinh doanh</span></div></div>
+      <nav id="nav">
+        <button class="nav-item active" data-page="dashboard">⌂ <span>Tổng quan</span></button>
+        <button class="nav-item" data-page="quotes">▤ <span>Báo giá</span></button>
+        <button class="nav-item" data-page="sales">⇢ <span>Xuất bán</span></button>
+        <button class="nav-item" data-page="purchase-orders">▣ <span>Đơn đặt hàng</span></button>
+        <button class="nav-item" data-page="inventory">▦ <span>Tồn kho</span></button>
+        <button class="nav-item" data-page="stock-documents">⇄ <span>Nhập xuất kho</span></button>
+        <button class="nav-item" data-page="finance">₫ <span>Thu chi & quỹ</span></button>
+        <button class="nav-item" data-page="debts">≡ <span>Công nợ</span></button>
+        <button class="nav-item" data-page="reports">▥ <span>Báo cáo</span></button>
+        <div class="nav-label">DANH MỤC</div>
+        <button class="nav-item" data-page="products">◫ <span>Hàng hóa</span></button>
+        <button class="nav-item" data-page="customers">♙ <span>Khách hàng</span></button>
+        <button class="nav-item" data-page="suppliers">♙ <span>Nhà cung cấp</span></button>
+        <button class="nav-item" data-page="warehouses">▱ <span>Kho</span></button>
+        <button class="nav-item" data-page="employees">♟ <span>Nhân viên</span></button>
+        <button class="nav-item" data-page="cash_accounts">▣ <span>Quỹ / tài khoản</span></button>
+        <button class="nav-item" data-page="income_expense_categories">☷ <span>Hạng mục thu chi</span></button>
+        <div class="nav-label">HỆ THỐNG</div>
+        <button class="nav-item" data-page="settings">⚙ <span>Cài đặt & sao lưu</span></button>
+      </nav>
+      <div class="version">Bản demo Internet đầy đủ<br>Dữ liệu đặt lại khi tải trang</div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div><h1 id="page-title">Tổng quan</h1><p id="page-subtitle">Tình hình hoạt động trên một màn hình</p></div><div class="today" id="today"></div></header>
+      <section id="content" class="content"></section>
+    </main>
+  </div>
+  <div id="modal" class="modal hidden"><div class="modal-backdrop" data-close-modal></div><div class="modal-card"><button class="modal-close" data-close-modal>×</button><div id="modal-body"></div></div></div>
+  <div id="toast" class="toast"></div>
+  <script src="demo-api.js"></script>
+  <script src="number-format.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

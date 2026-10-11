@@ -1,0 +1,1 @@
+.demo-ribbon{position:fixed;left:0;right:0;top:0;height:25px;background:#fff2c7;color:#775d00;border-bottom:1px solid #e3c65d;z-index:100;text-align:center;font-size:10px;font-weight:800;line-height:25px;letter-spacing:.25px}.demo-shell{padding-top:25px}.demo-shell .sidebar{top:25px}.demo-shell .main{min-height:calc(100vh - 25px)}
