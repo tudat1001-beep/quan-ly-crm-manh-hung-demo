@@ -403,15 +403,62 @@ function showInvoiceFileForm() {
 async function renderPrintTemplates() {
   const data = await window.crm.listPrintTemplates();
   state.printTemplateData = data;
-  const body = data.templates.map(row => `<tr><td>${esc(row.name)}</td><td>${esc(data.types[row.document_type])}</td><td>${row.is_default ? '<span class="badge RECEIVED">Mặc định</span>' : ''}</td><td><div class="actions"><button class="btn small" data-template-edit data-id="${row.id}">Sửa</button>${row.is_default ? '' : `<button class="btn small teal" data-template-default data-id="${row.id}">Chọn mặc định</button><button class="btn small danger" data-template-delete data-id="${row.id}">Xóa</button>`}</div></td></tr>`).join('');
-  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Thư viện mẫu in</h2><p>Mỗi loại chứng từ dùng một mẫu mặc định; có thể thêm mẫu mới bằng biến</p></div><button class="btn primary" id="new-print-template">+ Thêm mẫu</button></div><div class="table-wrap"><table><thead><tr><th>Tên mẫu</th><th>Loại chứng từ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div><div class="hint">Biến được viết dạng <strong>{{tên_biến}}</strong>. Nội dung động được mã hóa an toàn; bảng dòng hàng dùng biến {{items_table}}.</div></div>`;
+  const body = data.templates.map(row => `<tr><td>${esc(row.name)}</td><td>${esc(data.types[row.document_type])}</td><td>${row.is_default ? '<span class="badge RECEIVED">Mặc định</span>' : ''}</td><td><div class="actions"><button class="btn small" data-template-edit data-id="${row.id}">Sửa / Xem trước</button>${row.is_default ? '' : `<button class="btn small teal" data-template-default data-id="${row.id}">Chọn mặc định</button><button class="btn small danger" data-template-delete data-id="${row.id}">Xóa</button>`}</div></td></tr>`).join('');
+  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Thư viện mẫu in</h2><p>Chỉnh trực quan, xem trước tức thời và chèn biến bằng một lần bấm</p></div><button class="btn primary" id="new-print-template">+ Thêm mẫu</button></div><div class="table-wrap"><table><thead><tr><th>Tên mẫu</th><th>Loại chứng từ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div><div class="hint">Mở một mẫu để xem danh sách biến có mô tả và dữ liệu minh họa. Bảng dòng hàng dùng biến <strong>{{items_table}}</strong>.</div></div>`;
 }
 
 function showPrintTemplateForm(id) {
   const data = state.printTemplateData;
   const row = data.templates.find(item => item.id === Number(id)) || {};
   const starter = `<div class="brand-images">{{banner}}{{watermark}}</div>\n<h1>{{title}}</h1>\n<div class="meta">Số: <strong>{{number}}</strong> · Ngày: {{date}}</div>\n{{items_table}}\n<div class="totals"><div class="grand">TỔNG CỘNG: {{total}} đồng</div></div>\n<div class="notes">{{notes}}</div>`;
-  openModal(`<h2>${id ? 'Sửa mẫu in' : 'Thêm mẫu in'}</h2><form id="print-template-form" data-id="${id || ''}"><div class="form-grid"><div class="field span-2"><label>Tên mẫu</label><input name="name" value="${esc(row.name || '')}" required></div><div class="field span-2"><label>Loại chứng từ</label><select name="documentType">${Object.entries(data.types).map(([key, label]) => `<option value="${key}" ${row.document_type === key ? 'selected' : ''}>${esc(label)}</option>`).join('')}</select></div><div class="field span-4"><label>Nội dung mẫu HTML</label><textarea name="content" rows="18" required>${esc(row.content || starter)}</textarea></div></div><div class="hint"><strong>Các biến dùng được:</strong> ${data.variables.map(value => `{{${value}}}`).join(', ')}</div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu mẫu</button></div></form>`);
+  const help = window.TemplateEditor.variables.filter(item => data.variables.includes(item.name));
+  const variableGroups = [...new Set(help.map(item => item.group))].map(group => `<section class="variable-group"><h4>${esc(group)}</h4>${help.filter(item => item.group === group).map(item => `<button type="button" class="variable-chip" data-insert-variable="${item.name}" data-variable-search="${esc(`${item.name} ${item.label}`.toLowerCase())}" title="Bấm để chèn {{${item.name}}}"><code>{{${item.name}}}</code><span>${esc(item.label)}</span><small>Ví dụ: ${esc(item.sample)}</small></button>`).join('')}</section>`).join('');
+  openModal(`<h2>${id ? 'Sửa và xem trước mẫu in' : 'Tạo mẫu in'}</h2><form id="print-template-form" class="template-editor-form" data-id="${id || ''}"><div class="form-grid template-heading"><div class="field span-2"><label>Tên mẫu</label><input name="name" value="${esc(row.name || '')}" required></div><div class="field span-2"><label>Loại chứng từ</label><select name="documentType">${Object.entries(data.types).map(([key, label]) => `<option value="${key}" ${row.document_type === key ? 'selected' : ''}>${esc(label)}</option>`).join('')}</select></div></div>
+    <div class="template-editor-shell"><section class="template-compose"><div class="template-section-head"><div><strong>Thiết kế trực quan</strong><small>Chọn nội dung rồi dùng thanh công cụ; bấm biến ở bên phải để chèn</small></div></div><div class="template-toolbar" aria-label="Định dạng mẫu"><button type="button" data-editor-command="bold"><strong>B</strong></button><button type="button" data-editor-command="italic"><em>I</em></button><button type="button" data-editor-command="formatBlock" data-editor-value="h1">Tiêu đề</button><button type="button" data-editor-command="formatBlock" data-editor-value="h2">Mục</button><button type="button" data-editor-command="formatBlock" data-editor-value="p">Đoạn</button><button type="button" data-editor-command="justifyLeft">Căn trái</button><button type="button" data-editor-command="justifyCenter">Căn giữa</button></div><div id="template-designer" class="template-designer" contenteditable="true" spellcheck="false" aria-label="Nội dung mẫu in"></div><details class="template-source"><summary>Chỉnh mã HTML nâng cao</summary><textarea id="template-source" name="content" rows="10" required>${esc(row.content || starter)}</textarea></details></section>
+      <aside class="template-side"><section class="template-preview-panel"><div class="template-section-head"><div><strong>Xem trước trực tiếp</strong><small>Dữ liệu minh họa, không phải chứng từ thật</small></div></div><div class="template-preview"><div id="template-preview-paper" class="template-preview-paper"></div></div></section><section class="variable-library"><div class="template-section-head"><div><strong>Danh sách biến</strong><small>Bấm vào một biến để chèn</small></div><input id="variable-search" type="search" placeholder="Tìm biến..."></div><div id="variable-list" class="variable-list">${variableGroups}</div></section></aside></div>
+    <div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu mẫu</button></div></form>`);
+
+  const form = $('#print-template-form');
+  const designer = $('#template-designer');
+  const source = $('#template-source');
+  const type = $('[name="documentType"]', form);
+  let savedRange;
+  const updatePreview = () => { $('#template-preview-paper').innerHTML = window.TemplateEditor.render(designer.innerHTML, type.value); };
+  const syncFromDesigner = () => { source.value = designer.innerHTML; updatePreview(); };
+  const rememberSelection = () => {
+    const selection = window.getSelection();
+    if (selection.rangeCount && designer.contains(selection.anchorNode)) savedRange = selection.getRangeAt(0).cloneRange();
+  };
+  designer.innerHTML = window.TemplateEditor.sanitize(row.content || starter);
+  designer.addEventListener('input', syncFromDesigner);
+  designer.addEventListener('keyup', rememberSelection);
+  designer.addEventListener('mouseup', rememberSelection);
+  source.addEventListener('input', () => { designer.innerHTML = window.TemplateEditor.sanitize(source.value); updatePreview(); });
+  type.addEventListener('change', updatePreview);
+  $$('.template-toolbar button', form).forEach(button => {
+    button.addEventListener('mousedown', event => event.preventDefault());
+    button.addEventListener('click', () => { designer.focus(); document.execCommand(button.dataset.editorCommand, false, button.dataset.editorValue || null); syncFromDesigner(); rememberSelection(); });
+  });
+  $$('.variable-chip', form).forEach(button => {
+    button.addEventListener('mousedown', event => event.preventDefault());
+    button.addEventListener('click', () => {
+      designer.focus();
+      const selection = window.getSelection();
+      const range = savedRange && designer.contains(savedRange.commonAncestorContainer) ? savedRange : document.createRange();
+      if (!savedRange || !designer.contains(savedRange.commonAncestorContainer)) { range.selectNodeContents(designer); range.collapse(false); }
+      selection.removeAllRanges(); selection.addRange(range);
+      document.execCommand('insertText', false, `{{${button.dataset.insertVariable}}}`);
+      syncFromDesigner(); rememberSelection();
+    });
+  });
+  $('#variable-search').addEventListener('input', event => {
+    const query = event.target.value.trim().toLowerCase();
+    $$('.variable-chip', form).forEach(button => button.hidden = Boolean(query) && !button.dataset.variableSearch.includes(query));
+    $$('.variable-group', form).forEach(group => group.hidden = !$$('.variable-chip:not([hidden])', group).length);
+  });
+  form.addEventListener('submit', syncFromDesigner);
+  form.closest('.modal-card').classList.add('template-modal-card');
+  syncFromDesigner();
 }
 
 function renderSettings() {
