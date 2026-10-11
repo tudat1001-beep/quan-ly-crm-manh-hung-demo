@@ -8,15 +8,17 @@ const number = value => window.NumberFormatVi.parseLocaleNumber(value);
 const moneyInput = value => window.NumberFormatVi.formatIntegerInput(value);
 const today = () => new Date().toISOString().slice(0, 10);
 
-const state = { bootstrap: null, page: 'dashboard' };
+const state = { bootstrap: null, page: 'dashboard', selectedInvoiceFile: null };
 const pageMeta = {
   dashboard: ['Tổng quan', 'Tình hình hoạt động trên một màn hình'],
   quotes: ['Báo giá', 'Tính giá theo kích thước và chuyển sang xuất bán'],
   sales: ['Xuất bán', 'Các phiếu đã chuyển từ báo giá'],
   'purchase-orders': ['Đơn đặt hàng', 'Đặt mua và nhận hàng vào kho'],
+  'purchase-requests': ['Đề nghị mua', 'Đề nghị và phê duyệt nhu cầu vật tư, thiết bị'],
   inventory: ['Tồn kho', 'Số lượng tồn và lịch sử nhập xuất'],
   'stock-documents': ['Nhập xuất kho', 'Nhập mua, bán trực tiếp, chuyển kho và trả hàng'],
   finance: ['Thu chi & quỹ', 'Thu khách hàng, chi nhà cung cấp, chuyển quỹ và tạm ứng'],
+  'invoice-files': ['Hóa đơn đầu vào/ra', 'Lưu file hóa đơn theo tháng và ghi chú'],
   debts: ['Công nợ', 'Phải thu khách hàng và phải trả nhà cung cấp'],
   reports: ['Báo cáo', 'Tổng hợp doanh thu, giá vốn và lãi lỗ'],
   products: ['Hàng hóa', 'Danh mục hàng hóa và vật tư'],
@@ -26,6 +28,7 @@ const pageMeta = {
   employees: ['Nhân viên', 'Danh mục nhân viên và người nhận tạm ứng'],
   cash_accounts: ['Quỹ / tài khoản', 'Tiền mặt và tài khoản ngân hàng'],
   income_expense_categories: ['Hạng mục thu chi', 'Phân loại các khoản thu và chi'],
+  'print-templates': ['Mẫu in', 'Thêm, sửa và chọn mẫu mặc định bằng các biến'],
   settings: ['Cài đặt & sao lưu', 'Thông tin doanh nghiệp và an toàn dữ liệu']
 };
 
@@ -75,6 +78,7 @@ function closeModal() { $('#modal').classList.add('hidden'); $('#modal-body').in
 function options(rows, selected = '') { return rows.map(row => `<option value="${row.id}" ${String(row.id) === String(selected) ? 'selected' : ''}>${esc(row.code)} — ${esc(row.name)}</option>`).join(''); }
 function statusLabel(status) { return ({ DRAFT: 'Nháp', SENT: 'Đã gửi', WON: 'Đã chốt', CONVERTED: 'Đã xuất', CANCELLED: 'Đã hủy', RECEIVED: 'Đã nhận', POSTED: 'Đã ghi sổ' })[status] || status; }
 function badge(status) { return `<span class="badge ${status}">${statusLabel(status)}</span>`; }
+const quoteTypeLabels = { FULL_SERVICE: 'Vật tư + gia công', CUSTOMER_MATERIAL: 'Chỉ gia công' };
 
 async function refreshBootstrap() { state.bootstrap = await window.crm.bootstrap(); }
 
@@ -90,11 +94,14 @@ async function navigate(page) {
     else if (page === 'quotes') await renderQuotes();
     else if (page === 'sales') await renderSales();
     else if (page === 'purchase-orders') await renderPurchaseOrders();
+    else if (page === 'purchase-requests') await renderPurchaseRequests();
     else if (page === 'inventory') await renderInventory();
     else if (page === 'stock-documents') await renderStockDocuments();
     else if (page === 'finance') await renderFinance();
+    else if (page === 'invoice-files') await renderInvoiceFiles();
     else if (page === 'debts') await renderDebts();
     else if (page === 'reports') await renderReports();
+    else if (page === 'print-templates') await renderPrintTemplates();
     else if (page === 'settings') renderSettings();
   } catch (error) { $('#content').innerHTML = `<div class="panel"><strong>Không tải được dữ liệu:</strong> ${esc(error.message)}</div>`; }
 }
@@ -137,7 +144,7 @@ function showMasterForm(type, id) {
 
 async function renderQuotes() {
   const rows = await window.crm.listQuotes();
-  const body = rows.length ? rows.map(row => `<tr><td><strong>${esc(row.number)}</strong></td><td>${esc(row.quote_date)}</td><td>${esc(row.customer_name)}</td><td>${esc(row.warehouse_name)}</td><td>${badge(row.status)}</td><td class="num"><strong>${money(row.total)} ₫</strong></td><td><div class="actions">
+  const body = rows.length ? rows.map(row => `<tr><td><strong>${esc(row.number)}</strong></td><td>${esc(row.quote_date)}</td><td>${esc(row.customer_name)}</td><td>${esc(quoteTypeLabels[row.quote_type] || quoteTypeLabels.FULL_SERVICE)}</td><td>${esc(row.warehouse_name)}</td><td>${badge(row.status)}</td><td class="num"><strong>${money(row.total)} ₫</strong></td><td><div class="actions">
     <button class="btn small" data-doc-preview="quote" data-id="${row.id}">Xem/In</button><button class="btn small" data-doc-pdf="quote" data-id="${row.id}">PDF</button>
     ${row.status !== 'CONVERTED' ? `<button class="btn small" data-quote-detail data-id="${row.id}">Chi tiết / Sửa</button>` : ''}
     ${row.status === 'DRAFT' ? `<button class="btn small" data-quote-status="SENT" data-id="${row.id}">Đã gửi</button>` : ''}
@@ -145,8 +152,8 @@ async function renderQuotes() {
     ${row.status === 'WON' ? `<button class="btn small primary" data-quote-convert data-id="${row.id}">Xuất bán</button>` : ''}
     ${!['CONVERTED','CANCELLED'].includes(row.status) ? `<button class="btn small danger" data-quote-status="CANCELLED" data-id="${row.id}">Hủy</button>` : ''}
     ${row.status !== 'CONVERTED' ? `<button class="btn small danger" data-quote-delete data-id="${row.id}">Xóa</button>` : ''}
-  </div></td></tr>`).join('') : '<tr><td class="empty" colspan="7">Chưa có báo giá</td></tr>';
-  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Danh sách báo giá</h2><p>Giá vốn nội bộ không xuất hiện trên bản gửi khách</p></div><button class="btn primary" id="new-quote">+ Lập báo giá</button></div><div class="table-wrap"><table><thead><tr><th>Số</th><th>Ngày</th><th>Khách hàng</th><th>Kho</th><th>Trạng thái</th><th class="num">Tổng tiền</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+  </div></td></tr>`).join('') : '<tr><td class="empty" colspan="8">Chưa có báo giá</td></tr>';
+  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Danh sách báo giá</h2><p>Hai loại: cung cấp vật tư + gia công hoặc chỉ nhận gia công</p></div><button class="btn primary" id="new-quote">+ Lập báo giá</button></div><div class="table-wrap"><table><thead><tr><th>Số</th><th>Ngày</th><th>Khách hàng</th><th>Loại báo giá</th><th>Kho</th><th>Trạng thái</th><th class="num">Tổng tiền</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
 }
 
 function quoteLine(index = Date.now()) {
@@ -158,8 +165,8 @@ function quoteLine(index = Date.now()) {
     <div class="field"><label>Dài (mm)</label><input name="lengthMm" type="number" min="0" step="any"></div><div class="field"><label>Rộng (mm)</label><input name="widthMm" type="number" min="0" step="any"></div><div class="field"><label>Dày (mm)</label><input name="thicknessMm" type="number" min="0" step="any"></div>
     <div class="field"><label>Tỷ trọng</label><input name="density" type="number" min="0" step="any" value="7.85"></div><div class="field"><label>Giá vật liệu/kg</label><input name="materialPricePerKg" type="text" inputmode="numeric" class="money-input"></div>
     <div class="field"><label>Giờ gia công</label><input name="laborHours" type="number" min="0" step="any"></div><div class="field"><label>Đơn giá/giờ</label><input name="laborRatePerHour" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Số người</label><input name="workerCount" type="number" min="1" step="any" value="1"></div>
-    <div class="field"><label>Tiêu hao/SP</label><input name="consumablesPerItem" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Điện (kWh)</label><input name="electricityKwh" type="number" min="0" step="any"></div><div class="field"><label>Giá điện/kWh</label><input name="electricityRate" type="text" inputmode="numeric" class="money-input"></div>
-    <div class="field"><label>Khấu hao/giờ</label><input name="depreciationPerHour" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Số mặt sơn</label><input name="coatingSides" type="number" min="1" step="1" value="1"></div><div class="field"><label>Giá sơn/m²</label><input name="coatingPricePerM2" type="text" inputmode="numeric" class="money-input"></div>
+    <div class="field"><label>VT Tiêu hao/SP</label><input name="consumablesPerItem" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Điện (kWh)</label><input name="electricityKwh" type="number" min="0" step="any"></div><div class="field"><label>Giá điện/kWh</label><input name="electricityRate" type="text" inputmode="numeric" class="money-input"></div>
+    <div class="field"><label>Khấu hao MMTB/giờ</label><input name="depreciationPerHour" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Số mặt sơn</label><input name="coatingSides" type="number" min="1" step="1" value="1"></div><div class="field"><label>Giá sơn/m²</label><input name="coatingPricePerM2" type="text" inputmode="numeric" class="money-input"></div>
     <div class="field"><label>Hao hụt (%)</label><input name="wastePercent" type="number" min="0" step="any" value="0"></div><div class="field"><label>Lợi nhuận (%)</label><input name="profitPercent" type="number" min="0" step="any" value="15"></div><div class="field"><label>VAT (%)</label><input name="vatPercent" type="number" min="0" step="any" value="10"></div>
   </div><div class="line-total"><span>Khối lượng: <b data-result="weight">0</b> kg</span><span>Giá vốn: <b data-result="cost">0</b> ₫</span><span>Thành tiền: <strong data-result="total">0 ₫</strong></span></div></div>`;
 }
@@ -190,7 +197,8 @@ async function showQuoteForm(id) {
     <div class="field"><label>Ngày báo giá</label><input name="date" type="date" value="${esc(quote?.quote_date || today())}" required></div>
     <div class="field"><label>Khách hàng</label><select name="customerId" required>${options(state.bootstrap.customers, quote?.customer_id)}</select></div>
     <div class="field"><label>Kho xuất</label><select name="warehouseId" required>${options(state.bootstrap.warehouses, quote?.warehouse_id)}</select></div>
-    <div class="field"><label>Ghi chú</label><input name="notes" value="${esc(quote?.notes || '')}"></div>
+    <div class="field"><label>Loại báo giá</label><select name="quoteType"><option value="FULL_SERVICE" ${quote?.quote_type !== 'CUSTOMER_MATERIAL' ? 'selected' : ''}>Khách mua vật tư và gia công</option><option value="CUSTOMER_MATERIAL" ${quote?.quote_type === 'CUSTOMER_MATERIAL' ? 'selected' : ''}>Khách cung cấp vật tư, chỉ gia công</option></select></div>
+    <div class="field span-4"><label>Ghi chú / điều khoản</label><input name="notes" value="${esc(quote?.notes || '')}"></div>
     <div id="quote-customer-info" class="field hint span-4"></div>
   </div><div class="hint">SL tiêu hao kho là số lượng vật tư sẽ bị trừ khi xuất bán. Có thể nhập kg, tấm hoặc đơn vị khác nhưng phải khớp với đơn vị của hàng hóa đã chọn.</div><div class="section-title">Chi tiết giá thành</div><div id="quote-lines">${items.map((_, index) => quoteLine(index)).join('')}</div><button type="button" class="btn" id="add-quote-line">+ Thêm dòng</button><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">${quote ? 'Lưu thay đổi' : 'Lưu báo giá'}</button></div></form>`);
   $$('.quote-line').forEach((line, index) => Object.entries(items[index]).forEach(([name, value]) => {
@@ -228,13 +236,46 @@ async function showPurchaseOrderForm(id) {
   if (!state.bootstrap.suppliers.length || !state.bootstrap.products.length) return toast('Cần tạo nhà cung cấp và hàng hóa trước.', true);
   const po = id ? await window.crm.getPurchaseOrder(Number(id)) : null;
   const items = po?.items || [{}];
-  openModal(`<h2>${po ? `Chi tiết / Sửa ${esc(po.number)}` : 'Lập đơn đặt hàng'}</h2><form id="po-form" data-id="${po?.id || ''}"><div class="form-grid"><div class="field"><label>Ngày đặt</label><input name="date" type="date" value="${esc(po?.order_date || today())}" required></div><div class="field"><label>Nhà cung cấp</label><select name="supplierId">${options(state.bootstrap.suppliers, po?.supplier_id)}</select></div><div class="field"><label>Kho nhận</label><select name="warehouseId">${options(state.bootstrap.warehouses, po?.warehouse_id)}</select></div><div class="field"><label>Ghi chú</label><input name="notes" value="${esc(po?.notes || '')}"></div></div><div class="section-title">Hàng đặt</div><div id="po-lines">${items.map(poLine).join('')}</div><button type="button" class="btn" id="add-po-line">+ Thêm dòng</button><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">${po ? 'Lưu thay đổi' : 'Lưu đơn hàng'}</button></div></form>`);
+  openModal(`<h2>${po ? `Chi tiết / Sửa ${esc(po.number)}` : 'Lập đơn đặt hàng'}</h2><form id="po-form" data-id="${po?.id || ''}"><div class="form-grid">
+    <div class="field"><label>Ngày đặt</label><input name="date" type="date" value="${esc(po?.order_date || today())}" required></div><div class="field"><label>Nhà cung cấp</label><select name="supplierId">${options(state.bootstrap.suppliers, po?.supplier_id)}</select></div><div class="field"><label>Kho nhận</label><select name="warehouseId">${options(state.bootstrap.warehouses, po?.warehouse_id)}</select></div><div class="field"><label>Công trình / bộ phận</label><input name="project" value="${esc(po?.project || '')}"></div>
+    <div class="field"><label>Ngày giao dự kiến</label><input name="deliveryDate" type="date" value="${esc(po?.delivery_date || '')}"></div><div class="field span-2"><label>Địa điểm giao hàng</label><input name="deliveryLocation" value="${esc(po?.delivery_location || '')}"></div><div class="field"><label>Chi phí vận chuyển / khác</label><input name="shippingCost" class="money-input" inputmode="numeric" value="${moneyInput(po?.shipping_cost || 0)}"></div>
+    <div class="field span-2"><label>Điều kiện thanh toán</label><input name="paymentTerms" value="${esc(po?.payment_terms || '')}"></div><div class="field span-2"><label>Yêu cầu chất lượng / tiêu chuẩn</label><input name="qualityRequirements" value="${esc(po?.quality_requirements || '')}"></div>
+    <div class="field span-2"><label>Bảo hành / đổi trả</label><input name="warranty" value="${esc(po?.warranty || '')}"></div><div class="field span-2"><label>Chứng từ yêu cầu</label><input name="documentsRequired" value="${esc(po?.documents_required || '')}"></div><div class="field span-4"><label>Ghi chú</label><input name="notes" value="${esc(po?.notes || '')}"></div>
+  </div><div class="section-title">Hàng đặt</div><div id="po-lines">${items.map(poLine).join('')}</div><button type="button" class="btn" id="add-po-line">+ Thêm dòng</button><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">${po ? 'Lưu thay đổi' : 'Lưu đơn hàng'}</button></div></form>`);
   $$('.po-line').forEach((line, index) => {
     const item = items[index];
     $('[name="productId"]', line).value = item.product_id || '';
     $('[name="quantity"]', line).value = item.quantity ?? 1;
     $('[name="unitPrice"]', line).value = moneyInput(item.unit_price ?? 0);
     $('[name="vatPercent"]', line).value = item.vat_percent ?? 10;
+  });
+}
+
+function purchaseRequestLine() {
+  return `<div class="line-card purchase-request-line"><button type="button" class="btn small danger remove-line">Xóa dòng</button><div class="line-grid">
+    <div class="field span-2"><label>Tên vật tư / thiết bị</label><input name="itemName" required></div><div class="field span-2"><label>Quy cách / mã hàng</label><input name="specification"></div><div class="field"><label>ĐVT</label><input name="unit"></div><div class="field"><label>Số lượng</label><input name="quantity" type="number" min="0.001" step="any" value="1" required></div><div class="field"><label>Đơn giá dự kiến</label><input name="estimatedUnitPrice" class="money-input" inputmode="numeric" value="0"></div><div class="field span-2"><label>Ghi chú</label><input name="notes"></div>
+  </div></div>`;
+}
+
+async function renderPurchaseRequests() {
+  const rows = await window.crm.listPurchaseRequests();
+  const body = rows.length ? rows.map(row => `<tr><td><strong>${esc(row.number)}</strong></td><td>${esc(row.request_date)}</td><td>${esc(row.employee_name || row.requester_name)}</td><td>${esc(row.department)}</td><td>${esc(row.purpose)}</td><td class="num">${money(row.total)} ₫</td><td><div class="actions"><button class="btn small" data-doc-preview="purchase_request" data-id="${row.id}">Xem/In</button><button class="btn small" data-doc-pdf="purchase_request" data-id="${row.id}">PDF</button><button class="btn small" data-purchase-request-edit data-id="${row.id}">Chi tiết / Sửa</button><button class="btn small danger" data-purchase-request-delete data-id="${row.id}">Xóa</button></div></td></tr>`).join('') : '<tr><td colspan="7" class="empty">Chưa có phiếu đề nghị mua</td></tr>';
+  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Phiếu đề nghị mua vật tư, thiết bị</h2><p>Mẫu nội bộ trước khi lập đơn đặt hàng</p></div><button class="btn primary" id="new-purchase-request">+ Lập phiếu đề nghị</button></div><div class="table-wrap"><table><thead><tr><th>Số</th><th>Ngày</th><th>Người đề nghị</th><th>Bộ phận</th><th>Mục đích</th><th class="num">Dự kiến</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+
+async function showPurchaseRequestForm(id) {
+  await refreshBootstrap();
+  const request = id ? await window.crm.getPurchaseRequest(Number(id)) : null;
+  const items = request?.items || [{}];
+  openModal(`<h2>${request ? `Chi tiết / Sửa ${esc(request.number)}` : 'Lập phiếu đề nghị mua'}</h2><form id="purchase-request-form" data-id="${request?.id || ''}"><div class="form-grid">
+    <div class="field"><label>Ngày đề nghị</label><input name="date" type="date" value="${esc(request?.request_date || today())}" required></div><div class="field"><label>Nhân viên</label><select name="employeeId"><option value="">—</option>${options(state.bootstrap.employees, request?.employee_id)}</select></div><div class="field"><label>Người đề nghị khác</label><input name="requesterName" value="${esc(request?.requester_name || '')}"></div><div class="field"><label>Bộ phận / chức vụ</label><input name="department" value="${esc(request?.department || '')}"></div>
+    <div class="field span-2"><label>Công trình / đơn hàng / máy móc</label><input name="project" value="${esc(request?.project || '')}"></div><div class="field"><label>Mục đích mua</label><input name="purpose" value="${esc(request?.purpose || '')}"></div><div class="field"><label>Thời gian cần</label><input name="neededDate" type="date" value="${esc(request?.needed_date || '')}"></div>
+    <div class="field span-2"><label>Nhà cung cấp đề xuất</label><input name="proposedSupplier" value="${esc(request?.proposed_supplier || '')}"></div><div class="field span-2"><label>Yêu cầu kỹ thuật / tiêu chuẩn</label><input name="technicalRequirements" value="${esc(request?.technical_requirements || '')}"></div><div class="field span-2"><label>Lý do mua / tồn kho / phương án thay thế</label><input name="reason" value="${esc(request?.reason || '')}"></div><div class="field span-2"><label>Hồ sơ kèm theo / ghi chú</label><input name="notes" value="${esc(request?.notes || '')}"></div>
+  </div><div class="section-title">Vật tư, thiết bị đề nghị mua</div><div id="purchase-request-lines">${items.map(purchaseRequestLine).join('')}</div><button type="button" class="btn" id="add-purchase-request-line">+ Thêm dòng</button><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu phiếu</button></div></form>`);
+  $$('.purchase-request-line').forEach((line, index) => {
+    const item = items[index];
+    const values = { itemName: item.item_name, specification: item.specification, unit: item.unit, quantity: item.quantity, estimatedUnitPrice: item.estimated_unit_price, notes: item.notes };
+    Object.entries(values).forEach(([name, value]) => { const input = $(`[name="${name}"]`, line); input.value = input.classList.contains('money-input') ? moneyInput(value || 0) : value ?? ''; });
   });
 }
 
@@ -298,8 +339,9 @@ async function renderFinance() {
   const body = data.transactions.length ? data.transactions.map(row => {
     const incoming = cashInTypes.includes(row.type);
     const neutral = row.type === 'ADVANCE_SETTLEMENT';
+    const printable = ['ADVANCE', 'ADVANCE_SETTLEMENT', 'ADVANCE_REFUND'].includes(row.type);
     const party = row.customer_name || row.supplier_name || row.employee_name || row.category_name || row.target_account_name || '';
-    return `<tr><td><strong>${esc(row.number)}</strong></td><td>${esc(row.transaction_date)}</td><td>${esc(cashTypeLabels[row.type])}</td><td>${esc(row.account_name)}</td><td>${esc(party)}</td><td class="num ${neutral ? '' : incoming ? 'positive' : 'negative'}">${neutral ? '' : incoming ? '+' : '-'}${money(row.amount)} ₫</td><td>${esc(row.reference)}</td><td>${esc(row.notes)}</td><td><div class="actions"><button class="btn small" data-cash-detail data-id="${row.id}">Chi tiết</button><button class="btn small danger" data-cash-delete data-id="${row.id}">Xóa</button></div></td></tr>`;
+    return `<tr><td><strong>${esc(row.number)}</strong></td><td>${esc(row.transaction_date)}</td><td>${esc(cashTypeLabels[row.type])}</td><td>${esc(row.account_name)}</td><td>${esc(party)}</td><td class="num ${neutral ? '' : incoming ? 'positive' : 'negative'}">${neutral ? '' : incoming ? '+' : '-'}${money(row.amount)} ₫</td><td>${esc(row.reference)}</td><td>${esc(row.notes)}</td><td><div class="actions">${printable ? `<button class="btn small" data-doc-preview="cash" data-id="${row.id}">Xem/In</button><button class="btn small" data-doc-pdf="cash" data-id="${row.id}">PDF</button>` : ''}<button class="btn small" data-cash-detail data-id="${row.id}">Chi tiết</button><button class="btn small danger" data-cash-delete data-id="${row.id}">Xóa</button></div></td></tr>`;
   }).join('') : '<tr><td class="empty" colspan="9">Chưa có giao dịch thu chi</td></tr>';
   state.financeRows = data.transactions;
   const advances = data.advances.length ? data.advances.map(row => `<tr><td>${esc(row.code)}</td><td>${esc(row.name)}</td><td class="num ${row.balance > 0 ? 'negative' : ''}">${money(row.balance)} ₫</td></tr>`).join('') : '<tr><td colspan="3" class="empty">Chưa có nhân viên</td></tr>';
@@ -327,8 +369,10 @@ async function showCashTransactionForm() {
     <div class="field"><label>Nhân viên</label><select name="employeeId"><option value="">—</option>${options(state.bootstrap.employees)}</select></div>
     <div class="field"><label>Hạng mục</label><select name="categoryId"><option value="">—</option>${options(state.bootstrap.categories)}</select></div>
     <div class="field"><label>Số chứng từ tham chiếu</label><input name="reference"></div>
-    <div class="field span-2"><label>Nội dung</label><input name="notes"></div>
-  </div><div class="hint">Chỉ chọn đối tượng liên quan đến nghiệp vụ. Chuyển quỹ cần chọn thêm quỹ nhận.</div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Ghi sổ</button></div></form>`);
+    <div class="field"><label>Bộ phận / chức vụ</label><input name="department"></div><div class="field"><label>Từ ngày</label><input name="useFromDate" type="date"></div><div class="field"><label>Đến ngày</label><input name="useToDate" type="date"></div><div class="field"><label>Hạn thanh toán tạm ứng</label><input name="dueDate" type="date"></div>
+    <div class="field"><label>Hình thức nhận tiền</label><select name="paymentMethod"><option value="">—</option><option>Tiền mặt</option><option>Chuyển khoản</option></select></div><div class="field"><label>Ngân hàng</label><input name="bankName"></div><div class="field"><label>Số tài khoản</label><input name="bankAccount"></div><div class="field"><label>Số chứng từ kèm theo</label><input name="documentCount" type="number" min="0" value="0"></div>
+    <div class="field span-4"><label>Nội dung / mục đích</label><input name="notes"></div>
+  </div><div class="hint">Các trường bộ phận, thời hạn và tài khoản được dùng trên mẫu tạm ứng/thanh toán. Nghiệp vụ khác có thể để trống.</div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Ghi sổ</button></div></form>`);
 }
 
 async function renderDebts() {
@@ -341,6 +385,33 @@ async function renderDebts() {
 async function renderReports() {
   const r = await window.crm.getReports();
   $('#content').innerHTML = `<div class="cards"><div class="stat-card"><span>Doanh thu</span><strong>${money(r.revenue)} ₫</strong><em>Bán hàng trừ hàng trả</em></div><div class="stat-card"><span>Giá vốn</span><strong>${money(r.cogs)} ₫</strong><em>Theo biến động kho</em></div><div class="stat-card"><span>Thu / chi khác</span><strong>${money(r.otherIncome - r.expenses)} ₫</strong><em>Khoản tính vào lãi lỗ</em></div><div class="stat-card"><span>Lợi nhuận</span><strong class="${r.profit < 0 ? 'negative' : 'positive'}">${money(r.profit)} ₫</strong><em>Doanh thu − giá vốn ± thu chi khác</em></div></div><div class="panel"><div class="panel-head"><div><h2>Chi tiết kết quả</h2><p>Số liệu được tổng hợp trực tiếp từ chứng từ đã ghi sổ</p></div></div><div class="table-wrap"><table><tbody><tr><td>Doanh thu bán hàng</td><td class="num">${money(r.revenue)} ₫</td></tr><tr><td>Giá vốn hàng bán</td><td class="num">${money(r.cogs)} ₫</td></tr><tr><td>Thu khác tính lãi lỗ</td><td class="num">${money(r.otherIncome)} ₫</td></tr><tr><td>Chi khác tính lãi lỗ</td><td class="num">${money(r.expenses)} ₫</td></tr><tr><td><strong>Lợi nhuận</strong></td><td class="num"><strong>${money(r.profit)} ₫</strong></td></tr></tbody></table></div></div>`;
+}
+
+async function renderInvoiceFiles() {
+  const rows = await window.crm.listInvoiceFiles();
+  const body = rows.length ? rows.map(row => `<tr><td>${row.invoice_type === 'INPUT' ? 'Đầu vào' : 'Đầu ra'}</td><td>${esc(row.invoice_month)}</td><td>${esc(row.invoice_number)}</td><td>${esc(row.partner_name)}</td><td>${esc(row.original_name)}</td><td>${esc(row.notes)}</td><td><div class="actions"><button class="btn small" data-invoice-open data-id="${row.id}">Mở file</button><button class="btn small danger" data-invoice-delete data-id="${row.id}">Xóa</button></div></td></tr>`).join('') : '<tr><td colspan="7" class="empty">Chưa lưu file hóa đơn</td></tr>';
+  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Kho file hóa đơn</h2><p>Phân loại đầu vào, đầu ra theo tháng; file được sao chép vào dữ liệu ứng dụng</p></div><button class="btn primary" id="new-invoice-file">+ Thêm hóa đơn</button></div><div class="table-wrap"><table><thead><tr><th>Loại</th><th>Tháng</th><th>Số hóa đơn</th><th>Khách hàng / NCC</th><th>File</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+
+function showInvoiceFileForm() {
+  state.selectedInvoiceFile = null;
+  openModal(`<h2>Thêm file hóa đơn</h2><form id="invoice-file-form"><div class="form-grid">
+    <div class="field"><label>Loại hóa đơn</label><select name="invoiceType"><option value="INPUT">Hóa đơn đầu vào</option><option value="OUTPUT">Hóa đơn đầu ra</option></select></div><div class="field"><label>Tháng</label><input name="invoiceMonth" type="month" value="${today().slice(0, 7)}" required></div><div class="field"><label>Số hóa đơn</label><input name="invoiceNumber"></div><div class="field"><label>Khách hàng / nhà cung cấp</label><input name="partnerName"></div><div class="field span-4"><label>Ghi chú</label><input name="notes"></div><div class="field span-4"><label>File đã chọn</label><div class="file-picker"><button type="button" class="btn" id="pick-invoice-file">Chọn file</button><strong id="invoice-file-name">Chưa chọn file</strong></div></div>
+  </div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu hóa đơn</button></div></form>`);
+}
+
+async function renderPrintTemplates() {
+  const data = await window.crm.listPrintTemplates();
+  state.printTemplateData = data;
+  const body = data.templates.map(row => `<tr><td>${esc(row.name)}</td><td>${esc(data.types[row.document_type])}</td><td>${row.is_default ? '<span class="badge RECEIVED">Mặc định</span>' : ''}</td><td><div class="actions"><button class="btn small" data-template-edit data-id="${row.id}">Sửa</button>${row.is_default ? '' : `<button class="btn small teal" data-template-default data-id="${row.id}">Chọn mặc định</button><button class="btn small danger" data-template-delete data-id="${row.id}">Xóa</button>`}</div></td></tr>`).join('');
+  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Thư viện mẫu in</h2><p>Mỗi loại chứng từ dùng một mẫu mặc định; có thể thêm mẫu mới bằng biến</p></div><button class="btn primary" id="new-print-template">+ Thêm mẫu</button></div><div class="table-wrap"><table><thead><tr><th>Tên mẫu</th><th>Loại chứng từ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div><div class="hint">Biến được viết dạng <strong>{{tên_biến}}</strong>. Nội dung động được mã hóa an toàn; bảng dòng hàng dùng biến {{items_table}}.</div></div>`;
+}
+
+function showPrintTemplateForm(id) {
+  const data = state.printTemplateData;
+  const row = data.templates.find(item => item.id === Number(id)) || {};
+  const starter = `<div class="brand-images">{{banner}}{{watermark}}</div>\n<h1>{{title}}</h1>\n<div class="meta">Số: <strong>{{number}}</strong> · Ngày: {{date}}</div>\n{{items_table}}\n<div class="totals"><div class="grand">TỔNG CỘNG: {{total}} đồng</div></div>\n<div class="notes">{{notes}}</div>`;
+  openModal(`<h2>${id ? 'Sửa mẫu in' : 'Thêm mẫu in'}</h2><form id="print-template-form" data-id="${id || ''}"><div class="form-grid"><div class="field span-2"><label>Tên mẫu</label><input name="name" value="${esc(row.name || '')}" required></div><div class="field span-2"><label>Loại chứng từ</label><select name="documentType">${Object.entries(data.types).map(([key, label]) => `<option value="${key}" ${row.document_type === key ? 'selected' : ''}>${esc(label)}</option>`).join('')}</select></div><div class="field span-4"><label>Nội dung mẫu HTML</label><textarea name="content" rows="18" required>${esc(row.content || starter)}</textarea></div></div><div class="hint"><strong>Các biến dùng được:</strong> ${data.variables.map(value => `{{${value}}}`).join(', ')}</div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu mẫu</button></div></form>`);
 }
 
 function renderSettings() {
@@ -375,9 +446,21 @@ document.addEventListener('click', async event => {
     if (target.id === 'new-po') return showPurchaseOrderForm();
     if (target.dataset.poDetail !== undefined) return showPurchaseOrderForm(Number(target.dataset.id));
     if (target.id === 'add-po-line') return $('#po-lines').insertAdjacentHTML('beforeend', poLine());
+    if (target.id === 'new-purchase-request') return showPurchaseRequestForm();
+    if (target.dataset.purchaseRequestEdit !== undefined) return showPurchaseRequestForm(Number(target.dataset.id));
+    if (target.id === 'add-purchase-request-line') return $('#purchase-request-lines').insertAdjacentHTML('beforeend', purchaseRequestLine());
+    if (target.dataset.purchaseRequestDelete !== undefined) { if (!confirm('Xóa phiếu đề nghị mua này?')) return; await window.crm.deletePurchaseRequest(Number(target.dataset.id)); toast('Đã xóa phiếu đề nghị.'); return navigate('purchase-requests'); }
     if (target.id === 'new-stock-document') return showStockDocumentForm();
     if (target.id === 'add-stock-document-line') return $('#stock-document-lines').insertAdjacentHTML('beforeend', stockDocumentLine());
     if (target.id === 'new-cash-transaction') return showCashTransactionForm();
+    if (target.id === 'new-invoice-file') return showInvoiceFileForm();
+    if (target.id === 'pick-invoice-file') { state.selectedInvoiceFile = await window.crm.pickInvoiceFile(); if (state.selectedInvoiceFile) $('#invoice-file-name').textContent = state.selectedInvoiceFile.name; return; }
+    if (target.dataset.invoiceOpen !== undefined) return window.crm.openInvoiceFile(Number(target.dataset.id));
+    if (target.dataset.invoiceDelete !== undefined) { if (!confirm('Xóa thông tin và file hóa đơn đã lưu?')) return; await window.crm.deleteInvoiceFile(Number(target.dataset.id)); toast('Đã xóa file hóa đơn.'); return navigate('invoice-files'); }
+    if (target.id === 'new-print-template') return showPrintTemplateForm();
+    if (target.dataset.templateEdit !== undefined) return showPrintTemplateForm(Number(target.dataset.id));
+    if (target.dataset.templateDefault !== undefined) { await window.crm.setDefaultPrintTemplate(Number(target.dataset.id)); toast('Đã chọn mẫu mặc định.'); return navigate('print-templates'); }
+    if (target.dataset.templateDelete !== undefined) { if (!confirm('Xóa mẫu in này?')) return; await window.crm.deletePrintTemplate(Number(target.dataset.id)); toast('Đã xóa mẫu in.'); return navigate('print-templates'); }
     if (target.classList.contains('remove-line')) {
       const card = target.closest('.line-card');
       if ($$('.line-card', card.parentElement).length === 1) return toast('Chứng từ cần ít nhất một dòng.', true);
@@ -441,15 +524,24 @@ document.addEventListener('submit', async event => {
     }
     if (form.id === 'quote-form') {
       const head = Object.fromEntries(new FormData(form));
-      const payload = { date: head.date, customerId: Number(head.customerId), warehouseId: Number(head.warehouseId), notes: head.notes, items: $$('.quote-line', form).map(lineData) };
+      const payload = { date: head.date, customerId: Number(head.customerId), warehouseId: Number(head.warehouseId), quoteType: head.quoteType, notes: head.notes, items: $$('.quote-line', form).map(lineData) };
       const result = form.dataset.id ? await window.crm.updateQuote(Number(form.dataset.id), payload) : await window.crm.createQuote(payload);
       closeModal(); toast(form.dataset.id ? `Đã cập nhật ${result.number}.` : `Đã tạo báo giá ${result.number}.`); return navigate('quotes');
     }
     if (form.id === 'po-form') {
       const data = new FormData(form);
-      const payload = { date: data.get('date'), supplierId: Number(data.get('supplierId')), warehouseId: Number(data.get('warehouseId')), notes: data.get('notes'), items: $$('.po-line', form).map(lineData) };
+      const payload = { date: data.get('date'), supplierId: Number(data.get('supplierId')), warehouseId: Number(data.get('warehouseId')),
+        project: data.get('project'), deliveryDate: data.get('deliveryDate'), deliveryLocation: data.get('deliveryLocation'),
+        shippingCost: number(data.get('shippingCost')), paymentTerms: data.get('paymentTerms'), qualityRequirements: data.get('qualityRequirements'),
+        warranty: data.get('warranty'), documentsRequired: data.get('documentsRequired'), notes: data.get('notes'), items: $$('.po-line', form).map(lineData) };
       const result = form.dataset.id ? await window.crm.updatePurchaseOrder(Number(form.dataset.id), payload) : await window.crm.createPurchaseOrder(payload);
       closeModal(); toast(form.dataset.id ? `Đã cập nhật ${result.number}.` : `Đã tạo đơn ${result.number}.`); return navigate('purchase-orders');
+    }
+    if (form.id === 'purchase-request-form') {
+      const data = Object.fromEntries(new FormData(form));
+      const payload = { ...data, employeeId: Number(data.employeeId) || null, items: $$('.purchase-request-line', form).map(lineData) };
+      const result = await window.crm.savePurchaseRequest(Number(form.dataset.id) || null, payload);
+      closeModal(); toast(`Đã lưu ${result.number}.`); return navigate('purchase-requests');
     }
     if (form.id === 'stock-document-form') {
       const data = Object.fromEntries(new FormData(form));
@@ -465,8 +557,20 @@ document.addEventListener('submit', async event => {
       const fields = Object.fromEntries($$('input,select,textarea', form).filter(input => input.name).map(input => [input.name, input.classList.contains('money-input') ? number(input.value) : input.value]));
       const payload = { ...fields, accountId: Number(fields.accountId), targetAccountId: Number(fields.targetAccountId) || null,
         customerId: Number(fields.customerId) || null, supplierId: Number(fields.supplierId) || null,
-        employeeId: Number(fields.employeeId) || null, categoryId: Number(fields.categoryId) || null };
+        employeeId: Number(fields.employeeId) || null, categoryId: Number(fields.categoryId) || null,
+        documentCount: Number(fields.documentCount) || 0 };
       const result = await window.crm.createCashTransaction(payload); closeModal(); toast(`Đã ghi sổ ${result.number}.`); return navigate('finance');
+    }
+    if (form.id === 'invoice-file-form') {
+      if (!state.selectedInvoiceFile) throw new Error('Cần chọn file hóa đơn.');
+      const fields = Object.fromEntries(new FormData(form));
+      await window.crm.saveInvoiceFile({ ...fields, sourcePath: state.selectedInvoiceFile.path, originalName: state.selectedInvoiceFile.name });
+      state.selectedInvoiceFile = null; closeModal(); toast('Đã lưu file hóa đơn.'); return navigate('invoice-files');
+    }
+    if (form.id === 'print-template-form') {
+      const fields = Object.fromEntries(new FormData(form));
+      if (form.dataset.id) fields.id = Number(form.dataset.id);
+      await window.crm.savePrintTemplate(fields); closeModal(); toast('Đã lưu mẫu in.'); return navigate('print-templates');
     }
     if (form.id === 'settings-form') { await window.crm.saveSettings(Object.fromEntries(new FormData(form))); await refreshBootstrap(); toast('Đã lưu cài đặt.'); return renderSettings(); }
   } catch (error) { toast(error.message, true); }
