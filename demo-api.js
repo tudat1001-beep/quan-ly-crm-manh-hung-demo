@@ -42,7 +42,7 @@
 
   function makeDb() {
     const db = {
-      settings: { company_name: 'CÔNG TY TNHH SẢN XUẤT TM-DV MẠNH HÙNG', company_address: 'TP.HCM', company_phone: '0901 234 567', tax_code: '0312345678' },
+      settings: { company_name: 'CÔNG TY TNHH SẢN XUẤT TM-DV MẠNH HÙNG', company_address: 'TP.HCM', company_phone: '0901 234 567', tax_code: '0312345678', invoice_prefix: 'HD', invoice_start: '1', banner_data: 'logo.jpg' },
       customers: [{ id: 1, code: 'DEMO-KH01', name: 'Công ty Nội thất An Phát', phone: '0901 234 567', address: '125 Nguyễn Văn Linh, Quận 7, TP.HCM', tax_code: '0312345678', active: 1 }],
       suppliers: [{ id: 1, code: 'DEMO-NCC01', name: 'Công ty Thép Việt', phone: '028 3822 6688', address: 'KCN Sóng Thần, Bình Dương', tax_code: '3700123456', active: 1 }],
       products: [{ id: 1, code: 'DEMO-INOX304', name: 'Tấm inox 304 dày 1mm', unit: 'kg', purchase_price: 45000, sale_price: 65000, vat_rate: 10, active: 1 },
@@ -61,7 +61,7 @@
     const input = { productId: 1, description: 'Bàn inox gia công 1200 x 600', unit: 'cái', quantity: 2, stockQuantity: 18, lengthMm: 1200, widthMm: 600,
       thicknessMm: 1, density: 7.85, materialPricePerKg: 45000, laborHours: 3, laborRatePerHour: 80000, workerCount: 2, consumablesPerItem: 50000,
       electricityKwh: 8, electricityRate: 3500, depreciationPerHour: 25000, coatingSides: 1, coatingPricePerM2: 90000, wastePercent: 5, profitPercent: 20, vatPercent: 10 };
-    db.quotes.push({ id: 1, number: 'BG2026-0001', quote_date: date(), customer_id: 1, warehouse_id: 1, quote_type: 'FULL_SERVICE', status: 'SENT', notes: 'DEMO: Báo giá mẫu đầy đủ', items: [quoteItem(1, input, 1)] });
+    db.quotes.push({ id: 1, number: 'BG2026-0001', quote_date: date(), customer_id: 1, warehouse_id: 1, quote_type: 'FULL_SERVICE', status: 'SENT', invoice_status: 'PENDING', invoice_number: '', invoice_date: '', invoice_notes: '', notes: 'DEMO: Báo giá mẫu đầy đủ', items: [quoteItem(1, input, 1)] });
     db.purchase_orders.push({ id: 1, number: 'PO2026-0001', order_date: date(), supplier_id: 1, warehouse_id: 1, status: 'DRAFT', notes: 'DEMO: Đơn mua mẫu',
       project: 'Xưởng sản xuất', delivery_date: date(), delivery_location: 'Kho chính', payment_terms: 'Chuyển khoản sau khi nhận hàng', quality_requirements: 'Hàng đúng quy cách', warranty: '', documents_required: 'Hóa đơn GTGT, phiếu giao hàng', shipping_cost: 0,
       items: [{ id: 1, product_id: 2, quantity: 20, unit_price: 85000, vat_percent: 10, received_quantity: 0 }] });
@@ -69,7 +69,7 @@
     db.invoice_files.push({ id: 1, invoice_type: 'INPUT', invoice_month: date().slice(0, 7), invoice_number: 'DEMO-HĐ01', partner_name: 'Công ty Thép Việt', notes: 'File minh họa trong demo', file_path: 'demo://hoa-don.pdf', original_name: 'Hoa-don-demo.pdf' });
     const types = { QUOTE_FULL: 'Báo giá cung cấp vật tư và gia công', QUOTE_PROCESSING: 'Báo giá gia công vật tư khách cung cấp', SALE: 'Phiếu xuất bán', PURCHASE_ORDER: 'Đơn đặt hàng', PURCHASE_REQUEST: 'Phiếu đề nghị mua vật tư, thiết bị', ADVANCE_REQUEST: 'Giấy đề nghị tạm ứng', ADVANCE_SETTLEMENT: 'Giấy thanh toán / hoàn ứng' };
     db.print_template_types = types;
-    Object.keys(types).forEach((type, index) => db.print_templates.push({ id: index + 1, name: types[type], document_type: type, content: '<div class="brand-images">{{banner}}{{watermark}}</div><h1>{{title}}</h1><div class="meta">Số: {{number}} · Ngày: {{date}}</div>{{items_table}}<div class="totals"><div class="grand">TỔNG CỘNG: {{total}} đồng</div></div><div class="notes">{{notes}}</div>', is_default: 1 }));
+    Object.keys(types).forEach((type, index) => db.print_templates.push({ id: index + 1, name: types[type], document_type: type, content: '<div class="brand-images">{{banner}}{{watermark}}</div><h1>{{title}}</h1><div class="meta">Số: {{number}} · Ngày: {{date}}</div>{{items_table}}<div class="totals"><div class="grand">TỔNG CỘNG: {{total}} đồng</div></div><div class="notes">{{notes}}</div>', layout_json: '', is_default: 1 }));
     db.stock_documents.push({ id: 1, number: 'NH2026-0001', document_date: date(), type: 'DIRECT_RECEIPT', warehouse_from_id: null, warehouse_to_id: 1,
       customer_id: null, supplier_id: 1, notes: 'DEMO: Tồn đầu', status: 'POSTED', items: [{ id: 1, product_id: 1, quantity: 200, unit_price: 45000, vat_percent: 10 }, { id: 2, product_id: 2, quantity: 50, unit_price: 85000, vat_percent: 10 }] });
     db.stock_documents[0].total = total(db.stock_documents[0].items);
@@ -106,7 +106,7 @@
     if (!payload.customerId || !payload.warehouseId || !payload.items?.length) throw new Error('Báo giá chưa đủ thông tin.');
     let row = id ? db.quotes.find(item => item.id === Number(id)) : null;
     if (row?.status === 'CONVERTED') throw new Error('Báo giá đã xuất bán nên không thể sửa.');
-    if (!row) { const newId = nextId(db.quotes); row = { id: newId, number: numberFor('quote', 'BG'), status: 'DRAFT' }; db.quotes.push(row); }
+    if (!row) { const newId = nextId(db.quotes); row = { id: newId, number: numberFor('quote', 'BG'), status: 'DRAFT', invoice_status: 'PENDING', invoice_number: '', invoice_date: '', invoice_notes: '' }; db.quotes.push(row); }
     Object.assign(row, { quote_date: payload.date, customer_id: Number(payload.customerId), warehouse_id: Number(payload.warehouseId), quote_type: payload.quoteType || 'FULL_SERVICE', notes: payload.notes || '' });
     row.items = payload.items.map((item, index) => quoteItem(row.id, item, index + 1)); return { id: row.id, number: row.number };
   }
@@ -190,6 +190,24 @@
     return row;
   }
 
+  function setQuoteInvoice(id, payload) {
+    const row = db.quotes.find(item => item.id === Number(id));
+    if (!row) throw new Error('Không tìm thấy báo giá.');
+    if (!['PENDING', 'ISSUED', 'RETAIL_NO_INVOICE'].includes(payload.status)) throw new Error('Trạng thái hóa đơn không hợp lệ.');
+    row.invoice_status = payload.status;
+    row.invoice_notes = payload.notes || '';
+    if (payload.status === 'ISSUED') {
+      row.invoice_date = payload.invoiceDate || date();
+      if (!row.invoice_number) {
+        const year = row.invoice_date.slice(0, 4);
+        const prefix = String(db.settings.invoice_prefix || 'HD').toUpperCase();
+        const used = db.quotes.map(item => item.invoice_number).filter(value => value?.startsWith(`${prefix}${year}-`)).map(value => Number(value.split('-').at(-1)));
+        row.invoice_number = `${prefix}${year}-${String(used.length ? Math.max(...used) + 1 : Number(db.settings.invoice_start) || 1).padStart(4, '0')}`;
+      }
+    }
+    return copy({ invoice_status: row.invoice_status, invoice_number: row.invoice_number, invoice_date: row.invoice_date, invoice_notes: row.invoice_notes });
+  }
+
   const htmlEscape = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
   const formatMoney = value => new Intl.NumberFormat('vi-VN').format(Math.round(n(value)));
   const sanitizeTemplate = content => String(content || '')
@@ -209,7 +227,7 @@
     const template = db.print_templates.find(row => row.document_type === documentType && row.is_default) || db.print_templates.find(row => row.document_type === documentType);
     const titles = { QUOTE_FULL: 'BÁO GIÁ', QUOTE_PROCESSING: 'BÁO GIÁ GIA CÔNG', SALE: 'PHIẾU XUẤT BÁN', PURCHASE_ORDER: 'ĐƠN ĐẶT HÀNG', PURCHASE_REQUEST: 'PHIẾU ĐỀ NGHỊ MUA VẬT TƯ, THIẾT BỊ', ADVANCE_REQUEST: 'GIẤY ĐỀ NGHỊ TẠM ỨNG', ADVANCE_SETTLEMENT: 'GIẤY THANH TOÁN TIỀN TẠM ỨNG' };
     const sum = sourceItems.reduce((value, item) => value + n(item.line_total || item.quantity * (item.unit_price || item.estimated_unit_price)), 0) || n(doc.amount);
-    const raw = { banner: `<div class="company">${htmlEscape(db.settings.company_name)}</div>`, watermark: '', company_name: db.settings.company_name, company_address: db.settings.company_address, company_phone: db.settings.company_phone, company_tax_code: db.settings.tax_code,
+    const raw = { banner: `<img class="banner" src="${htmlEscape(db.settings.banner_data || 'logo.jpg')}" alt="Banner">`, watermark: '', company_name: db.settings.company_name, company_address: db.settings.company_address, company_phone: db.settings.company_phone, company_tax_code: db.settings.tax_code,
       title: titles[documentType], number: doc.number, date: doc.quote_date || doc.sale_date || doc.order_date || doc.request_date || doc.transaction_date, partner_label: type === 'po' ? 'Nhà cung cấp' : 'Khách hàng', partner_name: doc.customer_name || doc.supplier_name || doc.employee_name || doc.requester_name,
       partner_address: doc.customer_address || doc.supplier_address, partner_phone: doc.customer_phone || doc.supplier_phone, partner_tax_code: doc.customer_tax_code || doc.supplier_tax_code, warehouse: doc.warehouse_name, items_table: itemsTable,
       subtotal: formatMoney(sum), vat_total: formatMoney(0), total: formatMoney(doc.total || doc.amount || sum), total_words: '', notes: doc.notes, employee_name: doc.employee_name || doc.requester_name, department: doc.department, purpose: doc.purpose || doc.notes, reference: doc.reference,
@@ -218,7 +236,7 @@
       bank_name: doc.bank_name, bank_account: doc.bank_account, document_count: doc.document_count, advance_balance_before: formatMoney(doc.advance_balance_before), settlement_difference: formatMoney(doc.settlement_difference) };
     const variables = Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, ['banner', 'watermark', 'items_table'].includes(key) ? String(value || '') : htmlEscape(value)]));
     const body = sanitizeTemplate(template?.content || '<h1>{{title}}</h1>{{items_table}}').replace(/\{\{([a-z_]+)\}\}/g, (_match, key) => variables[key] ?? '');
-    popup.document.write(`<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>${htmlEscape(doc.number)}</title><style>@page{size:A4;margin:10mm}body{font:12px Arial;color:#17202a;padding:20px}.company,h1{text-align:center;font-weight:700}h1{color:#9c1d23}table{width:100%;border-collapse:collapse}th,td{padding:6px;border:1px solid #555;text-align:center}.left{text-align:left}.totals{margin:12px 0 0 auto;width:55%}.grand{font-weight:700}.signatures{display:flex;justify-content:space-between;text-align:center;margin-top:32px}.signatures div{width:24%}.signatures small{display:block}</style></head><body>${body}<script>window.print()<\/script></body></html>`); popup.document.close(); return true;
+    popup.document.write(`<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>${htmlEscape(doc.number)}</title><style>@page{size:A5 portrait;margin:7mm}body{font:10px Arial;color:#17202a}.banner{display:block;width:100%;height:auto;object-fit:contain}h1{text-align:center;font-weight:700;color:#9c1d23}table{width:100%;border-collapse:collapse;font-size:8px}th,td{padding:3px;border:1px solid #555;text-align:center}.left{text-align:left}.totals{margin:8px 0 0 auto;width:62%}.grand{font-weight:700}.signatures{display:flex;justify-content:space-between;text-align:center;margin-top:24px}.signatures div{flex:1}.signatures small{display:block}</style></head><body>${body}<script>window.print()<\/script></body></html>`); popup.document.close(); return true;
   }
 
   window.crm = {
@@ -229,6 +247,7 @@
     deleteMaster: async (type, id) => { if (masterUsed(type, id)) throw new Error('Dữ liệu đã được dùng trong chứng từ nên không thể xóa.'); db[type] = db[type].filter(row => row.id !== Number(id)); },
     listQuotes: async () => copy(listQuotes()), getQuote: async id => copy(getQuote(id)), createQuote: async payload => saveQuote(payload), updateQuote: async (id, payload) => saveQuote(payload, id),
     setQuoteStatus: async (id, status) => { const row = db.quotes.find(item => item.id === Number(id)); if (!row || row.status === 'CONVERTED') throw new Error('Không thể đổi trạng thái.'); row.status = status; },
+    setQuoteInvoice: async (id, payload) => setQuoteInvoice(id, payload),
     convertQuote: async id => { const quote = getQuote(id); if (quote.status === 'CONVERTED') throw new Error('Báo giá đã được chuyển.'); for (const item of quote.items) if (item.product_id && balance(item.product_id, quote.warehouse_id) < item.stock_quantity) throw new Error(`Không đủ tồn kho cho ${item.description}.`);
       const sale = { id: nextId(db.sales), number: numberFor('sale', 'BH'), sale_date: date(), quote_id: quote.id, customer_id: quote.customer_id, warehouse_id: quote.warehouse_id, total: quote.total, status: 'POSTED' }; db.sales.push(sale);
       quote.items.forEach(item => { if (item.product_id && item.stock_quantity > 0) db.movements.push({ id: nextId(db.movements), movement_date: date(), warehouse_id: quote.warehouse_id, product_id: item.product_id, quantity: -item.stock_quantity, unit_cost: item.cost_before_profit / Math.max(1, item.stock_quantity), source_type: 'SALE', source_id: sale.id, note: sale.number }); });
@@ -267,12 +286,14 @@
     saveInvoiceFile: async payload => { const row = { id: nextId(db.invoice_files), invoice_type: payload.invoiceType, invoice_month: payload.invoiceMonth, invoice_number: payload.invoiceNumber || '', partner_name: payload.partnerName || '', notes: payload.notes || '', file_path: payload.sourcePath, original_name: payload.originalName }; db.invoice_files.push(row); return { id: row.id }; },
     openInvoiceFile: async () => true, deleteInvoiceFile: async id => { db.invoice_files = db.invoice_files.filter(row => row.id !== Number(id)); },
     listPrintTemplates: async () => ({ templates: copy(db.print_templates), types: copy(db.print_template_types), variables: ['banner','watermark','company_name','company_address','company_phone','company_tax_code','title','number','date','partner_label','partner_name','partner_address','partner_phone','partner_tax_code','warehouse','items_table','subtotal','vat_total','total','total_words','notes','employee_name','department','purpose','reference','needed_date','project','proposed_supplier','technical_requirements','reason','delivery_date','delivery_location','payment_terms','quality_requirements','warranty','documents_required','shipping_cost','use_from_date','use_to_date','due_date','payment_method','bank_name','bank_account','document_count','advance_balance_before','settlement_difference'] }),
-    savePrintTemplate: async record => { let row = record.id ? db.print_templates.find(item => item.id === Number(record.id)) : null; if (!row) { row = { id: nextId(db.print_templates), is_default: 0 }; db.print_templates.push(row); } Object.assign(row, { name: record.name, document_type: record.documentType, content: record.content }); return row.id; },
+    savePrintTemplate: async record => { let row = record.id ? db.print_templates.find(item => item.id === Number(record.id)) : null; if (!row) { row = { id: nextId(db.print_templates), is_default: 0 }; db.print_templates.push(row); } Object.assign(row, { name: record.name, document_type: record.documentType, content: record.content, layout_json: JSON.stringify(record.layout || {}) }); return row.id; },
     setDefaultPrintTemplate: async id => { const row = db.print_templates.find(item => item.id === Number(id)); if (!row) throw new Error('Không tìm thấy mẫu in.'); db.print_templates.filter(item => item.document_type === row.document_type).forEach(item => item.is_default = item.id === row.id ? 1 : 0); },
     deletePrintTemplate: async id => { const row = db.print_templates.find(item => item.id === Number(id)); if (row?.is_default) throw new Error('Không thể xóa mẫu mặc định.'); db.print_templates = db.print_templates.filter(item => item.id !== Number(id)); },
     getDebts: async () => ({ customers: copy(active('customers').map(customer => ({ id: customer.id, code: customer.code, name: customer.name, balance: db.sales.filter(row => row.customer_id === customer.id).reduce((sum, row) => sum + row.total, 0) + db.stock_documents.filter(row => row.customer_id === customer.id && row.type === 'DIRECT_SALE').reduce((sum, row) => sum + row.total, 0) - db.stock_documents.filter(row => row.customer_id === customer.id && row.type === 'CUSTOMER_RETURN').reduce((sum, row) => sum + row.total, 0) - db.cash_transactions.filter(row => row.customer_id === customer.id && row.type === 'CUSTOMER_RECEIPT').reduce((sum, row) => sum + row.amount, 0) }))),
       suppliers: copy(active('suppliers').map(supplier => ({ id: supplier.id, code: supplier.code, name: supplier.name, balance: db.purchase_orders.filter(row => row.supplier_id === supplier.id && row.status === 'RECEIVED').reduce((sum, row) => sum + total(row.items) + n(row.shipping_cost), 0) + db.stock_documents.filter(row => row.supplier_id === supplier.id && row.type === 'DIRECT_RECEIPT').reduce((sum, row) => sum + row.total, 0) - db.stock_documents.filter(row => row.supplier_id === supplier.id && row.type === 'SUPPLIER_RETURN').reduce((sum, row) => sum + row.total, 0) - db.cash_transactions.filter(row => row.supplier_id === supplier.id && row.type === 'SUPPLIER_PAYMENT').reduce((sum, row) => sum + row.amount, 0) }))) }),
     getReports: async () => copy(reports()), saveSettings: async values => { Object.assign(db.settings, values); },
+    getBanner: async () => ({ dataUrl: db.settings.banner_data || 'logo.jpg', name: 'Banner dùng chung', custom: db.settings.banner_data !== 'logo.jpg' }),
+    pickBanner: async () => new Promise(resolve => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp'; input.onchange = () => { const file = input.files?.[0]; if (!file) return resolve(null); const reader = new FileReader(); reader.onload = () => { db.settings.banner_data = reader.result; resolve({ dataUrl: reader.result, name: file.name, custom: true }); }; reader.readAsDataURL(file); }; input.click(); }),
     seedDemoData: async () => { db = makeDb(); return { created: 9 }; },
     backup: async () => { const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = 'CRM-demo-backup.json'; link.click(); URL.revokeObjectURL(link.href); return 'CRM-demo-backup.json'; },
     previewDocument: async (type, id) => printDocument(type, id), exportPdf: async (type, id) => { printDocument(type, id); return null; }

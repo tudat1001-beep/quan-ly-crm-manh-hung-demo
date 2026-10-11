@@ -8,7 +8,7 @@ const number = value => window.NumberFormatVi.parseLocaleNumber(value);
 const moneyInput = value => window.NumberFormatVi.formatIntegerInput(value);
 const today = () => new Date().toISOString().slice(0, 10);
 
-const state = { bootstrap: null, page: 'dashboard', selectedInvoiceFile: null };
+const state = { bootstrap: null, page: 'dashboard', selectedInvoiceFile: null, quoteInvoiceFilter: 'ALL', bannerData: null };
 const pageMeta = {
   dashboard: ['Tổng quan', 'Tình hình hoạt động trên một màn hình'],
   quotes: ['Báo giá', 'Tính giá theo kích thước và chuyển sang xuất bán'],
@@ -79,6 +79,7 @@ function options(rows, selected = '') { return rows.map(row => `<option value="$
 function statusLabel(status) { return ({ DRAFT: 'Nháp', SENT: 'Đã gửi', WON: 'Đã chốt', CONVERTED: 'Đã xuất', CANCELLED: 'Đã hủy', RECEIVED: 'Đã nhận', POSTED: 'Đã ghi sổ' })[status] || status; }
 function badge(status) { return `<span class="badge ${status}">${statusLabel(status)}</span>`; }
 const quoteTypeLabels = { FULL_SERVICE: 'Vật tư + gia công', CUSTOMER_MATERIAL: 'Chỉ gia công' };
+const invoiceStatusLabels = { PENDING: 'Chưa xuất HĐ', ISSUED: 'Đã xuất HĐ', RETAIL_NO_INVOICE: 'Không lấy HĐ – Bán lẻ' };
 
 async function refreshBootstrap() { state.bootstrap = await window.crm.bootstrap(); }
 
@@ -102,7 +103,7 @@ async function navigate(page) {
     else if (page === 'debts') await renderDebts();
     else if (page === 'reports') await renderReports();
     else if (page === 'print-templates') await renderPrintTemplates();
-    else if (page === 'settings') renderSettings();
+    else if (page === 'settings') await renderSettings();
   } catch (error) { $('#content').innerHTML = `<div class="panel"><strong>Không tải được dữ liệu:</strong> ${esc(error.message)}</div>`; }
 }
 
@@ -143,8 +144,12 @@ function showMasterForm(type, id) {
 }
 
 async function renderQuotes() {
-  const rows = await window.crm.listQuotes();
+  const allRows = await window.crm.listQuotes();
+  const rows = state.quoteInvoiceFilter === 'ALL' ? allRows : allRows.filter(row => row.invoice_status === state.quoteInvoiceFilter);
+  const filterButton = (value, label) => `<button class="invoice-filter ${state.quoteInvoiceFilter === value ? 'active' : ''}" data-invoice-filter="${value}">${esc(label)} <strong>${value === 'ALL' ? allRows.length : allRows.filter(row => row.invoice_status === value).length}</strong></button>`;
   const body = rows.length ? rows.map(row => `<tr><td><strong>${esc(row.number)}</strong></td><td>${esc(row.quote_date)}</td><td>${esc(row.customer_name)}</td><td>${esc(quoteTypeLabels[row.quote_type] || quoteTypeLabels.FULL_SERVICE)}</td><td>${esc(row.warehouse_name)}</td><td>${badge(row.status)}</td><td class="num"><strong>${money(row.total)} ₫</strong></td><td><div class="actions">
+    <button class="invoice-status-button ${row.invoice_status}" data-quote-invoice data-id="${row.id}"><strong>${esc(invoiceStatusLabels[row.invoice_status] || invoiceStatusLabels.PENDING)}</strong>${row.invoice_status === 'ISSUED' ? `<small>${esc(row.invoice_number)} · ${esc(row.invoice_date)}</small>` : ''}</button>
+  </div></td><td><div class="actions">
     <button class="btn small" data-doc-preview="quote" data-id="${row.id}">Xem/In</button><button class="btn small" data-doc-pdf="quote" data-id="${row.id}">PDF</button>
     ${row.status !== 'CONVERTED' ? `<button class="btn small" data-quote-detail data-id="${row.id}">Chi tiết / Sửa</button>` : ''}
     ${row.status === 'DRAFT' ? `<button class="btn small" data-quote-status="SENT" data-id="${row.id}">Đã gửi</button>` : ''}
@@ -152,8 +157,21 @@ async function renderQuotes() {
     ${row.status === 'WON' ? `<button class="btn small primary" data-quote-convert data-id="${row.id}">Xuất bán</button>` : ''}
     ${!['CONVERTED','CANCELLED'].includes(row.status) ? `<button class="btn small danger" data-quote-status="CANCELLED" data-id="${row.id}">Hủy</button>` : ''}
     ${row.status !== 'CONVERTED' ? `<button class="btn small danger" data-quote-delete data-id="${row.id}">Xóa</button>` : ''}
-  </div></td></tr>`).join('') : '<tr><td class="empty" colspan="8">Chưa có báo giá</td></tr>';
-  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Danh sách báo giá</h2><p>Hai loại: cung cấp vật tư + gia công hoặc chỉ nhận gia công</p></div><button class="btn primary" id="new-quote">+ Lập báo giá</button></div><div class="table-wrap"><table><thead><tr><th>Số</th><th>Ngày</th><th>Khách hàng</th><th>Loại báo giá</th><th>Kho</th><th>Trạng thái</th><th class="num">Tổng tiền</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+  </div></td></tr>`).join('') : '<tr><td class="empty" colspan="9">Không có báo giá trong trạng thái hóa đơn này</td></tr>';
+  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Danh sách báo giá</h2><p>Nhìn và lọc trạng thái xuất hóa đơn ngay trên danh sách</p></div><button class="btn primary" id="new-quote">+ Lập báo giá</button></div><div class="invoice-filters">${filterButton('ALL', 'Tất cả')}${filterButton('PENDING', 'Chưa xuất HĐ')}${filterButton('ISSUED', 'Đã xuất HĐ')}${filterButton('RETAIL_NO_INVOICE', 'Không lấy HĐ – Bán lẻ')}</div><div class="table-wrap"><table><thead><tr><th>Số</th><th>Ngày</th><th>Khách hàng</th><th>Loại báo giá</th><th>Kho</th><th>Trạng thái</th><th class="num">Tổng tiền</th><th>Hóa đơn</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+
+async function showQuoteInvoiceForm(id) {
+  const quote = await window.crm.getQuote(Number(id));
+  const status = quote.invoice_status || 'PENDING';
+  openModal(`<h2>Cập nhật hóa đơn — ${esc(quote.number)}</h2><form id="quote-invoice-form" data-id="${quote.id}"><div class="invoice-choices">
+    ${Object.entries(invoiceStatusLabels).map(([value, label]) => `<label class="invoice-choice ${status === value ? 'selected' : ''}"><input type="radio" name="status" value="${value}" ${status === value ? 'checked' : ''}><strong>${esc(label)}</strong><small>${value === 'PENDING' ? 'Đơn cần theo dõi để xuất hóa đơn' : value === 'ISSUED' ? 'Hệ thống tự sinh số hóa đơn' : 'Khách mua lẻ và không nhận hóa đơn'}</small></label>`).join('')}
+  </div><div id="issued-invoice-fields" class="form-grid ${status === 'ISSUED' ? '' : 'hidden'}"><div class="field span-2"><label>Số hóa đơn</label><strong class="readonly-value">${esc(quote.invoice_number || 'Tự động tạo khi lưu')}</strong></div><div class="field span-2"><label>Ngày xuất hóa đơn</label><input name="invoiceDate" type="date" value="${esc(quote.invoice_date || today())}"></div></div><div class="field"><label>Ghi chú hóa đơn</label><textarea name="notes" rows="3">${esc(quote.invoice_notes || '')}</textarea></div><div class="hint">Tiền tố và số bắt đầu được cài trong mục <strong>Cài đặt & sao lưu</strong>. Ngày xuất mặc định là hôm nay.</div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu trạng thái hóa đơn</button></div></form>`);
+  const form = $('#quote-invoice-form');
+  $$('[name="status"]', form).forEach(input => input.addEventListener('change', () => {
+    $$('.invoice-choice', form).forEach(choice => choice.classList.toggle('selected', choice.contains(input)));
+    $('#issued-invoice-fields').classList.toggle('hidden', input.value !== 'ISSUED');
+  }));
 }
 
 function quoteLine(index = Date.now()) {
@@ -403,6 +421,7 @@ function showInvoiceFileForm() {
 async function renderPrintTemplates() {
   const data = await window.crm.listPrintTemplates();
   state.printTemplateData = data;
+  state.bannerData = await window.crm.getBanner();
   const body = data.templates.map(row => `<tr><td>${esc(row.name)}</td><td>${esc(data.types[row.document_type])}</td><td>${row.is_default ? '<span class="badge RECEIVED">Mặc định</span>' : ''}</td><td><div class="actions"><button class="btn small" data-template-edit data-id="${row.id}">Sửa / Xem trước</button>${row.is_default ? '' : `<button class="btn small teal" data-template-default data-id="${row.id}">Chọn mặc định</button><button class="btn small danger" data-template-delete data-id="${row.id}">Xóa</button>`}</div></td></tr>`).join('');
   $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Thư viện mẫu in</h2><p>Chỉnh trực quan, xem trước tức thời và chèn biến bằng một lần bấm</p></div><button class="btn primary" id="new-print-template">+ Thêm mẫu</button></div><div class="table-wrap"><table><thead><tr><th>Tên mẫu</th><th>Loại chứng từ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div><div class="hint">Mở một mẫu để xem danh sách biến có mô tả và dữ liệu minh họa. Bảng dòng hàng dùng biến <strong>{{items_table}}</strong>.</div></div>`;
 }
@@ -410,45 +429,57 @@ async function renderPrintTemplates() {
 function showPrintTemplateForm(id) {
   const data = state.printTemplateData;
   const row = data.templates.find(item => item.id === Number(id)) || {};
-  const starter = `<div class="brand-images">{{banner}}{{watermark}}</div>\n<h1>{{title}}</h1>\n<div class="meta">Số: <strong>{{number}}</strong> · Ngày: {{date}}</div>\n{{items_table}}\n<div class="totals"><div class="grand">TỔNG CỘNG: {{total}} đồng</div></div>\n<div class="notes">{{notes}}</div>`;
+  const initialType = row.document_type || Object.keys(data.types)[0];
+  let layout;
+  try { layout = row.layout_json ? JSON.parse(row.layout_json) : window.TemplateEditor.defaultLayout(initialType); }
+  catch { layout = window.TemplateEditor.defaultLayout(initialType); }
   const help = window.TemplateEditor.variables.filter(item => data.variables.includes(item.name));
   const variableGroups = [...new Set(help.map(item => item.group))].map(group => `<section class="variable-group"><h4>${esc(group)}</h4>${help.filter(item => item.group === group).map(item => `<button type="button" class="variable-chip" data-insert-variable="${item.name}" data-variable-search="${esc(`${item.name} ${item.label}`.toLowerCase())}" title="Bấm để chèn {{${item.name}}}"><code>{{${item.name}}}</code><span>${esc(item.label)}</span><small>Ví dụ: ${esc(item.sample)}</small></button>`).join('')}</section>`).join('');
   openModal(`<h2>${id ? 'Sửa và xem trước mẫu in' : 'Tạo mẫu in'}</h2><form id="print-template-form" class="template-editor-form" data-id="${id || ''}"><div class="form-grid template-heading"><div class="field span-2"><label>Tên mẫu</label><input name="name" value="${esc(row.name || '')}" required></div><div class="field span-2"><label>Loại chứng từ</label><select name="documentType">${Object.entries(data.types).map(([key, label]) => `<option value="${key}" ${row.document_type === key ? 'selected' : ''}>${esc(label)}</option>`).join('')}</select></div></div>
-    <div class="template-editor-shell"><section class="template-compose"><div class="template-section-head"><div><strong>Thiết kế trực quan</strong><small>Chọn nội dung rồi dùng thanh công cụ; bấm biến ở bên phải để chèn</small></div></div><div class="template-toolbar" aria-label="Định dạng mẫu"><button type="button" data-editor-command="bold"><strong>B</strong></button><button type="button" data-editor-command="italic"><em>I</em></button><button type="button" data-editor-command="formatBlock" data-editor-value="h1">Tiêu đề</button><button type="button" data-editor-command="formatBlock" data-editor-value="h2">Mục</button><button type="button" data-editor-command="formatBlock" data-editor-value="p">Đoạn</button><button type="button" data-editor-command="justifyLeft">Căn trái</button><button type="button" data-editor-command="justifyCenter">Căn giữa</button></div><div id="template-designer" class="template-designer" contenteditable="true" spellcheck="false" aria-label="Nội dung mẫu in"></div><details class="template-source"><summary>Chỉnh mã HTML nâng cao</summary><textarea id="template-source" name="content" rows="10" required>${esc(row.content || starter)}</textarea></details></section>
+    <div class="template-editor-shell"><section class="template-compose"><div class="template-section-head"><div><strong>Chỉnh theo từng khối</strong><small>Bật/tắt khối và sửa nội dung; không cần biết HTML</small></div></div><div class="template-blocks">
+      <article class="template-block-card"><label class="toggle-line"><input type="checkbox" name="showBanner"> Hiển thị banner dùng chung</label><label class="toggle-line"><input type="checkbox" name="showWatermark"> Hiển thị logo chìm</label><div class="banner-editor-preview"><img src="${esc(state.bannerData?.dataUrl || '')}" alt="Banner dùng chung"></div><small>Đổi banner tại Cài đặt & sao lưu. Ảnh được giữ nguyên tỷ lệ trên giấy A5.</small></article>
+      <article class="template-block-card"><div class="field"><label>Tiêu đề chứng từ</label><input name="title"></div><label class="toggle-line"><input type="checkbox" name="showMeta"> Hiển thị dòng số/ngày</label><div class="field"><label>Dòng số và ngày</label><textarea name="metaText" rows="2"></textarea></div></article>
+      <article class="template-block-card"><label class="toggle-line"><input type="checkbox" name="showInfo"> Hiển thị khối thông tin</label><div class="field"><label>Tiêu đề khối</label><input name="infoHeading"></div><div class="field"><label>Nội dung thông tin</label><textarea name="infoText" rows="6"></textarea></div></article>
+      <article class="template-block-card"><label class="toggle-line"><input type="checkbox" name="showTable"> Hiển thị bảng chi tiết hàng hóa</label><div class="field"><label>Tiêu đề bảng</label><input name="tableHeading"></div><div class="hint compact">Bảng được tạo tự động bằng biến <strong>{{items_table}}</strong>.</div></article>
+      <article class="template-block-card"><label class="toggle-line"><input type="checkbox" name="showSummary"> Hiển thị tổng tiền</label><div class="field"><label>Nội dung tổng hợp</label><textarea name="summaryText" rows="5"></textarea></div></article>
+      <article class="template-block-card"><label class="toggle-line"><input type="checkbox" name="showNotes"> Hiển thị ghi chú / điều khoản</label><div class="field"><label>Nội dung ghi chú</label><textarea name="notesText" rows="4"></textarea></div></article>
+      <article class="template-block-card"><label class="toggle-line"><input type="checkbox" name="showSignatures"> Hiển thị phần ký tên</label><div class="field"><label>Các vị trí ký — mỗi dòng một vị trí</label><textarea name="signaturesText" rows="4"></textarea></div></article>
+    </div></section>
       <aside class="template-side"><section class="template-preview-panel"><div class="template-section-head"><div><strong>Xem trước trực tiếp</strong><small>Dữ liệu minh họa, không phải chứng từ thật</small></div></div><div class="template-preview"><div id="template-preview-paper" class="template-preview-paper"></div></div></section><section class="variable-library"><div class="template-section-head"><div><strong>Danh sách biến</strong><small>Bấm vào một biến để chèn</small></div><input id="variable-search" type="search" placeholder="Tìm biến..."></div><div id="variable-list" class="variable-list">${variableGroups}</div></section></aside></div>
     <div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu mẫu</button></div></form>`);
 
   const form = $('#print-template-form');
-  const designer = $('#template-designer');
-  const source = $('#template-source');
   const type = $('[name="documentType"]', form);
-  let savedRange;
-  const updatePreview = () => { $('#template-preview-paper').innerHTML = window.TemplateEditor.render(designer.innerHTML, type.value); };
-  const syncFromDesigner = () => { source.value = designer.innerHTML; updatePreview(); };
-  const rememberSelection = () => {
-    const selection = window.getSelection();
-    if (selection.rangeCount && designer.contains(selection.anchorNode)) savedRange = selection.getRangeAt(0).cloneRange();
+  const layoutFields = ['title', 'metaText', 'infoHeading', 'infoText', 'tableHeading', 'summaryText', 'notesText', 'signaturesText'];
+  const toggleFields = ['showBanner', 'showWatermark', 'showMeta', 'showInfo', 'showTable', 'showSummary', 'showNotes', 'showSignatures'];
+  let activeTextField = $('[name="title"]', form);
+  const readLayout = () => Object.fromEntries([
+    ...layoutFields.map(name => [name, $(`[name="${name}"]`, form).value]),
+    ...toggleFields.map(name => [name, $(`[name="${name}"]`, form).checked])
+  ]);
+  const writeLayout = values => {
+    layoutFields.forEach(name => $(`[name="${name}"]`, form).value = values[name] || '');
+    toggleFields.forEach(name => $(`[name="${name}"]`, form).checked = Boolean(values[name]));
   };
-  designer.innerHTML = window.TemplateEditor.sanitize(row.content || starter);
-  designer.addEventListener('input', syncFromDesigner);
-  designer.addEventListener('keyup', rememberSelection);
-  designer.addEventListener('mouseup', rememberSelection);
-  source.addEventListener('input', () => { designer.innerHTML = window.TemplateEditor.sanitize(source.value); updatePreview(); });
-  type.addEventListener('change', updatePreview);
-  $$('.template-toolbar button', form).forEach(button => {
-    button.addEventListener('mousedown', event => event.preventDefault());
-    button.addEventListener('click', () => { designer.focus(); document.execCommand(button.dataset.editorCommand, false, button.dataset.editorValue || null); syncFromDesigner(); rememberSelection(); });
+  const updatePreview = () => {
+    const content = window.TemplateEditor.buildContent(readLayout());
+    $('#template-preview-paper').innerHTML = window.TemplateEditor.render(content, type.value, { banner: state.bannerData?.dataUrl });
+  };
+  writeLayout(layout);
+  $$('input,textarea', $('.template-blocks', form)).forEach(input => {
+    input.addEventListener('focus', () => { if (input.type !== 'checkbox') activeTextField = input; });
+    input.addEventListener('input', updatePreview);
+    input.addEventListener('change', updatePreview);
   });
+  type.addEventListener('change', () => { writeLayout(window.TemplateEditor.defaultLayout(type.value)); updatePreview(); });
   $$('.variable-chip', form).forEach(button => {
     button.addEventListener('mousedown', event => event.preventDefault());
     button.addEventListener('click', () => {
-      designer.focus();
-      const selection = window.getSelection();
-      const range = savedRange && designer.contains(savedRange.commonAncestorContainer) ? savedRange : document.createRange();
-      if (!savedRange || !designer.contains(savedRange.commonAncestorContainer)) { range.selectNodeContents(designer); range.collapse(false); }
-      selection.removeAllRanges(); selection.addRange(range);
-      document.execCommand('insertText', false, `{{${button.dataset.insertVariable}}}`);
-      syncFromDesigner(); rememberSelection();
+      const token = `{{${button.dataset.insertVariable}}}`;
+      const start = activeTextField.selectionStart ?? activeTextField.value.length;
+      const end = activeTextField.selectionEnd ?? start;
+      activeTextField.setRangeText(token, start, end, 'end');
+      activeTextField.focus(); updatePreview();
     });
   });
   $('#variable-search').addEventListener('input', event => {
@@ -456,14 +487,15 @@ function showPrintTemplateForm(id) {
     $$('.variable-chip', form).forEach(button => button.hidden = Boolean(query) && !button.dataset.variableSearch.includes(query));
     $$('.variable-group', form).forEach(group => group.hidden = !$$('.variable-chip:not([hidden])', group).length);
   });
-  form.addEventListener('submit', syncFromDesigner);
+  form.getTemplateLayout = readLayout;
   form.closest('.modal-card').classList.add('template-modal-card');
-  syncFromDesigner();
+  updatePreview();
 }
 
-function renderSettings() {
+async function renderSettings() {
   const s = state.bootstrap?.settings || {};
-  $('#content').innerHTML = `<div class="split"><div class="panel"><div class="panel-head"><div><h2>Thông tin doanh nghiệp</h2><p>Hiển thị trên chứng từ in</p></div></div><form id="settings-form"><div class="form-grid"><div class="field span-4"><label>Tên doanh nghiệp</label><input name="company_name" value="${esc(s.company_name)}"></div><div class="field span-4"><label>Địa chỉ</label><input name="company_address" value="${esc(s.company_address)}"></div><div class="field span-2"><label>Điện thoại</label><input name="company_phone" value="${esc(s.company_phone)}"></div><div class="field span-2"><label>Mã số thuế</label><input name="tax_code" value="${esc(s.tax_code)}"></div></div><div class="form-actions"><button class="btn primary">Lưu cài đặt</button></div></form></div><div class="panel"><div class="panel-head"><div><h2>Sao lưu dữ liệu</h2><p>Tạo bản sao cơ sở dữ liệu để cất ở ổ khác</p></div></div><p>Dữ liệu đang được lưu cục bộ trên máy. Nên sao lưu cuối mỗi ngày làm việc và chép bản sao sang OneDrive, USB hoặc ổ mạng.</p><button class="btn teal" id="backup-now">Sao lưu ngay</button><div class="hint">Bản sao không bao gồm file cài đặt; chỉ cần cài lại ứng dụng rồi khôi phục file dữ liệu khi có sự cố.</div></div><div class="panel"><div class="panel-head"><div><h2>Dữ liệu kiểm tra</h2><p>Khách hàng, hàng hóa, tồn kho, báo giá, đơn mua và phiếu thu mẫu</p></div></div><button class="btn primary" id="seed-demo">Tạo dữ liệu mẫu</button><div class="hint">Dữ liệu mẫu có mã bắt đầu bằng DEMO-. Nút này chạy lại không tạo trùng.</div></div><div class="panel"><div class="panel-head"><div><h2>Hướng dẫn sử dụng</h2><p>Quy trình từ danh mục đến báo cáo</p></div></div><button class="btn" id="open-guide">Mở hướng dẫn</button></div></div>`;
+  state.bannerData = await window.crm.getBanner();
+  $('#content').innerHTML = `<div class="split"><div class="panel"><div class="panel-head"><div><h2>Thông tin doanh nghiệp</h2><p>Hiển thị trên chứng từ in</p></div></div><form id="settings-form"><div class="form-grid"><div class="field span-4"><label>Tên doanh nghiệp</label><input name="company_name" value="${esc(s.company_name)}"></div><div class="field span-4"><label>Địa chỉ</label><input name="company_address" value="${esc(s.company_address)}"></div><div class="field span-2"><label>Điện thoại</label><input name="company_phone" value="${esc(s.company_phone)}"></div><div class="field span-2"><label>Mã số thuế</label><input name="tax_code" value="${esc(s.tax_code)}"></div><div class="field span-2"><label>Tiền tố số hóa đơn</label><input name="invoice_prefix" value="${esc(s.invoice_prefix || 'HD')}" maxlength="10" required></div><div class="field span-2"><label>Số hóa đơn bắt đầu</label><input name="invoice_start" type="number" min="1" step="1" value="${esc(s.invoice_start || '1')}" required></div></div><div class="hint">Ví dụ tiền tố HD, số bắt đầu 1 sẽ tạo HD${new Date().getFullYear()}-0001 và tự chuyển về số bắt đầu khi sang năm mới.</div><div class="form-actions"><button class="btn primary">Lưu cài đặt</button></div></form></div><div class="panel"><div class="panel-head"><div><h2>Banner dùng chung</h2><p>Áp dụng cho toàn bộ mẫu in A5 dọc</p></div></div><div class="shared-banner-preview"><img src="${esc(state.bannerData.dataUrl)}" alt="Banner dùng chung"></div><button class="btn teal" id="pick-shared-banner">Thay banner</button><div class="hint">Ảnh JPG, PNG hoặc WebP. Hệ thống hiển thị đủ ảnh, giữ nguyên tỷ lệ và không cắt phần trên/dưới.</div></div><div class="panel"><div class="panel-head"><div><h2>Sao lưu dữ liệu</h2><p>Tạo bản sao cơ sở dữ liệu để cất ở ổ khác</p></div></div><p>Dữ liệu đang được lưu cục bộ trên máy. Nên sao lưu cuối mỗi ngày làm việc và chép bản sao sang OneDrive, USB hoặc ổ mạng.</p><button class="btn teal" id="backup-now">Sao lưu ngay</button><div class="hint">Bản sao không bao gồm file cài đặt; chỉ cần cài lại ứng dụng rồi khôi phục file dữ liệu khi có sự cố.</div></div><div class="panel"><div class="panel-head"><div><h2>Dữ liệu kiểm tra</h2><p>Khách hàng, hàng hóa, tồn kho, báo giá, đơn mua và phiếu thu mẫu</p></div></div><button class="btn primary" id="seed-demo">Tạo dữ liệu mẫu</button><div class="hint">Dữ liệu mẫu có mã bắt đầu bằng DEMO-. Nút này chạy lại không tạo trùng.</div></div><div class="panel"><div class="panel-head"><div><h2>Hướng dẫn sử dụng</h2><p>Quy trình từ danh mục đến báo cáo</p></div></div><button class="btn" id="open-guide">Mở hướng dẫn</button></div></div>`;
 }
 
 function showGuide() {
@@ -484,6 +516,8 @@ document.addEventListener('click', async event => {
       await window.crm.deleteMaster(target.dataset.masterDelete, Number(target.dataset.id)); toast('Đã xóa bản ghi.'); return navigate(state.page);
     }
     if (target.id === 'new-quote') return showQuoteForm();
+    if (target.dataset.invoiceFilter) { state.quoteInvoiceFilter = target.dataset.invoiceFilter; return renderQuotes(); }
+    if (target.dataset.quoteInvoice !== undefined) return showQuoteInvoiceForm(Number(target.dataset.id));
     if (target.dataset.quoteDetail !== undefined) return showQuoteForm(Number(target.dataset.id));
     if (target.dataset.quoteCustomerEdit !== undefined) {
       state.masterRows = await window.crm.listMaster('customers');
@@ -527,6 +561,7 @@ document.addEventListener('click', async event => {
     if (target.dataset.docPdf) { const file = await window.crm.exportPdf(target.dataset.docPdf, Number(target.dataset.id)); if (file) toast('Đã xuất file PDF.'); return; }
     if (target.id === 'seed-demo') { if (!confirm('Tạo bộ dữ liệu DEMO để kiểm tra ứng dụng?')) return; const result = await window.crm.seedDemoData(); await refreshBootstrap(); toast(result.created ? `Đã tạo ${result.created} nhóm dữ liệu mẫu.` : 'Dữ liệu mẫu đã có, không tạo trùng.'); return navigate('dashboard'); }
     if (target.id === 'open-guide') return showGuide();
+    if (target.id === 'pick-shared-banner') { const banner = await window.crm.pickBanner(); if (banner) { state.bannerData = banner; await refreshBootstrap(); toast('Đã thay banner dùng chung.'); return renderSettings(); } return; }
     if (target.id === 'backup-now') { const file = await window.crm.backup(); if (file) toast(`Đã sao lưu: ${file}`); }
   } catch (error) { toast(error.message, true); }
 });
@@ -575,6 +610,11 @@ document.addEventListener('submit', async event => {
       const result = form.dataset.id ? await window.crm.updateQuote(Number(form.dataset.id), payload) : await window.crm.createQuote(payload);
       closeModal(); toast(form.dataset.id ? `Đã cập nhật ${result.number}.` : `Đã tạo báo giá ${result.number}.`); return navigate('quotes');
     }
+    if (form.id === 'quote-invoice-form') {
+      const fields = Object.fromEntries(new FormData(form));
+      const result = await window.crm.setQuoteInvoice(Number(form.dataset.id), { status: fields.status, invoiceDate: fields.invoiceDate, notes: fields.notes });
+      closeModal(); toast(result.invoice_status === 'ISSUED' ? `Đã ghi nhận hóa đơn ${result.invoice_number}.` : 'Đã cập nhật trạng thái hóa đơn.'); return navigate('quotes');
+    }
     if (form.id === 'po-form') {
       const data = new FormData(form);
       const payload = { date: data.get('date'), supplierId: Number(data.get('supplierId')), warehouseId: Number(data.get('warehouseId')),
@@ -616,6 +656,8 @@ document.addEventListener('submit', async event => {
     }
     if (form.id === 'print-template-form') {
       const fields = Object.fromEntries(new FormData(form));
+      fields.layout = form.getTemplateLayout();
+      fields.content = window.TemplateEditor.buildContent(fields.layout);
       if (form.dataset.id) fields.id = Number(form.dataset.id);
       await window.crm.savePrintTemplate(fields); closeModal(); toast('Đã lưu mẫu in.'); return navigate('print-templates');
     }
