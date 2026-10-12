@@ -177,9 +177,13 @@ tr:last-child td { border-bottom: 0; }
 .line-grid { display: grid; grid-template-columns: repeat(6, minmax(105px, 1fr)); gap: 6px; }
 .quote-row { clear: both; padding-top: 5px; }
 .quote-row + .quote-row { margin-top: 5px; border-top: 1px dotted var(--line); }
-.quote-row-7 { grid-template-columns: repeat(7, minmax(105px, 1fr)); }
+.quote-row-7 { grid-template-columns: repeat(8, minmax(100px, 1fr)); }
 .quote-row-9 { grid-template-columns: repeat(9, minmax(92px, 1fr)); }
 .quote-row-10 { grid-template-columns: repeat(10, minmax(86px, 1fr)); }
+.stock-deductions { grid-column: span 2; padding: 5px; border: 1px solid #b8c9c1; border-radius: 4px; background: #f1f8f5; }
+.stock-deduction-row { display: grid; grid-template-columns: minmax(150px, 1fr) 78px; align-items: center; gap: 5px; margin-top: 4px; }
+.stock-deduction-row small { color: var(--muted); font-size: 9px; }
+.stock-deduction-row input { min-width: 0; }
 .line-total { display: flex; justify-content: flex-end; gap: 16px; margin-top: 6px; padding-top: 5px; border-top: 1px dashed var(--line); font-size: 11px; font-variant-numeric: tabular-nums; }
 .line-total strong { color: var(--brand); }
 .remove-line { float: right; position: relative; z-index: 1; }

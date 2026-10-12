@@ -287,12 +287,16 @@ async function showQuoteInvoiceForm(id) {
 function quoteLine(index = Date.now()) {
   const b = state.bootstrap;
   return `<div class="line-card quote-line" data-index="${index}"><button type="button" class="btn small danger remove-line">Xóa dòng</button><input type="hidden" name="stockQuantity" value="0"><div class="line-grid quote-row quote-row-7">
-    <div class="field"><label>Vật tư trừ kho</label><select name="productId"><option value="">Không trừ kho</option>${options(b.products)}</select></div>
+    <div class="field stock-deductions"><label>Vật tư trừ kho trên dòng này</label>
+      <div class="stock-deduction-row"><select name="productId" aria-label="Vật tư chính"><option value="">1. Không trừ vật tư chính</option>${options(b.products)}</select><small>Tự tính kg</small></div>
+      <div class="stock-deduction-row"><select name="paintProductId" aria-label="Bột sơn"><option value="">2. Không trừ bột sơn</option>${options(b.products)}</select><small>Tự tính kg</small></div>
+      <div class="stock-deduction-row"><select name="extraProductId" aria-label="Vật tư phụ"><option value="">3. Không trừ vật tư phụ</option>${options(b.products)}</select><input name="extraStockQuantity" type="number" min="0" step="any" placeholder="SL trừ" aria-label="Số lượng vật tư phụ trừ kho"></div>
+    </div>
     <div class="field"><label>Tên sản phẩm *</label><input name="description" required></div><div class="field"><label>ĐVT</label><input name="unit" value="cái"></div>
     <div class="field"><label>Dài (mm)</label><input name="lengthMm" type="number" min="0" step="any"></div><div class="field"><label>Rộng (mm)</label><input name="widthMm" type="number" min="0" step="any"></div><div class="field"><label>Dày (mm)</label><input name="thicknessMm" type="number" min="0" step="any"></div><div class="field"><label>Số lượng *</label><input name="quantity" type="number" min="0.001" step="any" value="1" required></div>
   </div><div class="line-grid quote-row quote-row-10">
     <div class="field"><label>Tỷ trọng</label><input name="density" type="number" min="0" step="any" value="7.85"></div><div class="field"><label>Giá vật liệu GC/kg</label><input name="materialPricePerKg" type="text" inputmode="numeric" class="money-input"></div>
-    <div class="field"><label>Bột sơn trừ kho</label><select name="paintProductId"><option value="">Không trừ sơn</option>${options(b.products)}</select></div><div class="field"><label>Giá vật liệu sơn/kg</label><input name="paintMaterialPricePerKg" type="text" inputmode="numeric" class="money-input"></div>
+    <div class="field"><label>Giá vật liệu sơn/kg</label><input name="paintMaterialPricePerKg" type="text" inputmode="numeric" class="money-input"></div>
     <div class="field"><label>Giờ gia công</label><input name="laborHours" type="number" min="0" step="any"></div><div class="field"><label>Giờ sơn tĩnh điện</label><input name="paintLaborHours" type="number" min="0" step="any"></div><div class="field"><label>Định mức bột sơn kg/m²</label><input name="powderNormKgM2" type="number" min="0" step="any"></div>
     <div class="field"><label>Số mặt sơn</label><input name="coatingSides" type="number" min="1" step="1" value="1"></div><div class="field"><label>Đơn giá/giờ</label><input name="laborRatePerHour" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Số người</label><input name="workerCount" type="number" min="1" step="any" value="1"></div>
   </div><div class="line-grid quote-row quote-row-9">
@@ -303,7 +307,7 @@ function quoteLine(index = Date.now()) {
 }
 
 function quoteItemFromDb(item) {
-  const fields = { productId: 'product_id', paintProductId: 'paint_product_id', description: 'description', unit: 'unit', quantity: 'quantity', stockQuantity: 'stock_quantity',
+  const fields = { productId: 'product_id', paintProductId: 'paint_product_id', extraProductId: 'extra_product_id', extraStockQuantity: 'extra_stock_quantity', description: 'description', unit: 'unit', quantity: 'quantity', stockQuantity: 'stock_quantity',
     lengthMm: 'length_mm', widthMm: 'width_mm', thicknessMm: 'thickness_mm', density: 'density', materialPricePerKg: 'material_price_per_kg',
     paintMaterialPricePerKg: 'paint_material_price_per_kg', laborHours: 'labor_hours', paintLaborHours: 'paint_labor_hours', laborRatePerHour: 'labor_rate_per_hour', workerCount: 'worker_count', consumablesPerItem: 'consumables_per_item',
     electricityKwh: 'electricity_kwh', electricityRate: 'electricity_rate', depreciationPerHour: 'depreciation_per_hour', coatingSides: 'coating_sides',
@@ -333,7 +337,7 @@ async function showQuoteForm(id) {
     <div class="field"><label>Phí vận chuyển khách trả</label><input name="shippingCost" class="money-input" inputmode="numeric" value="${moneyInput(quote?.shipping_cost || 0)}"></div><div class="field"><label>VAT vận chuyển (%)</label><input name="shippingVatPercent" type="number" min="0" step="any" value="${quote?.shipping_vat_percent ?? 10}"></div>
     <div class="field span-2"><label>Thông tin vận chuyển</label><input name="shippingInfo" value="${esc(quote?.shipping_info || '')}" placeholder="Để trống nếu công ty trả"></div><div class="field span-2"><label>Ghi chú / điều khoản</label><input name="notes" value="${esc(quote?.notes || '')}"></div>
     <div id="quote-customer-info" class="field hint span-4"></div>
-  </div><div class="hint">Khi xuất bán, vật tư chính được trừ theo khối lượng tính từ kích thước; bột sơn được trừ theo diện tích × định mức × số mặt sơn × số lượng. Chiết khấu khách chỉ theo dõi nội bộ, không trừ vào tổng tiền và không in trên phiếu xuất bán.</div><div class="section-title">Chi tiết giá thành</div><div id="quote-lines">${items.map((_, index) => quoteLine(index)).join('')}</div><button type="button" class="btn" id="add-quote-line">+ Thêm dòng</button><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">${quote ? 'Lưu thay đổi' : 'Lưu báo giá'}</button></div></form>`);
+  </div><div class="hint">Mỗi dòng báo giá có thể trừ cùng lúc 3 loại tồn kho: vật tư chính tự tính theo kích thước, bột sơn tự tính theo diện tích × định mức × số mặt × số lượng, và một vật tư phụ có số lượng nhập trực tiếp. Chiết khấu khách chỉ theo dõi nội bộ, không trừ vào tổng tiền và không in trên phiếu xuất bán.</div><div class="section-title">Chi tiết giá thành</div><div id="quote-lines">${items.map((_, index) => quoteLine(index)).join('')}</div><button type="button" class="btn" id="add-quote-line">+ Thêm dòng</button><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">${quote ? 'Lưu thay đổi' : 'Lưu báo giá'}</button></div></form>`);
   $$('.quote-line').forEach((line, index) => Object.entries(items[index]).forEach(([name, value]) => {
     const input = $(`[name="${name}"]`, line);
     if (input) input.value = input.classList.contains('money-input') ? moneyInput(value) : value ?? '';
