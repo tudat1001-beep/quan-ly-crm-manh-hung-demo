@@ -11,6 +11,11 @@ const today = () => new Date().toISOString().slice(0, 10);
 const state = { bootstrap: null, page: 'dashboard', selectedInvoiceFile: null, quoteInvoiceFilter: 'ALL', bannerData: null };
 const pageMeta = {
   dashboard: ['Tổng quan', 'Tình hình hoạt động trên một màn hình'],
+  'sales-dashboard': ['CRM Sale B2B', 'Khách hàng, công việc, cơ hội và KPI'],
+  'sales-tasks': ['Công việc Sale', 'Lịch gọi điện, gặp khách và chăm sóc'],
+  opportunities: ['Cơ hội bán hàng', 'Theo dõi từ tiếp cận đến thắng hoặc mất đơn'],
+  'quote-requests': ['Yêu cầu báo giá', 'Tiếp nhận RFQ, bản vẽ và phân công xử lý'],
+  'sales-kpis': ['KPI Sale', 'Mục tiêu và kết quả theo nhân viên'],
   quotes: ['Báo giá', 'Tính giá theo kích thước và chuyển sang xuất bán'],
   sales: ['Xuất bán', 'Các phiếu đã chuyển từ báo giá'],
   'purchase-orders': ['Đơn đặt hàng', 'Đặt mua và nhận hàng vào kho'],
@@ -40,8 +45,10 @@ const masterConfig = {
     ], columns: [['code', 'Mã'], ['name', 'Tên hàng'], ['unit', 'ĐVT'], ['purchase_price', 'Giá nhập', 'money'], ['sale_price', 'Giá bán', 'money'], ['vat_rate', 'VAT (%)']]
   },
   customers: {
-    title: 'Khách hàng', fields: [['code', 'Mã KH', 'text'], ['name', 'Tên khách hàng', 'text'], ['phone', 'Điện thoại', 'text'], ['tax_code', 'Mã số thuế', 'text'], ['address', 'Địa chỉ', 'text', 2]],
-    columns: [['code', 'Mã'], ['name', 'Tên khách hàng'], ['phone', 'Điện thoại'], ['tax_code', 'MST'], ['address', 'Địa chỉ']]
+    title: 'Khách hàng', fields: [['code', 'Mã KH', 'text'], ['name', 'Tên doanh nghiệp', 'text'], ['phone', 'Điện thoại', 'text'], ['tax_code', 'Mã số thuế', 'text'], ['address', 'Địa chỉ', 'text', 2],
+      ['industrial_zone', 'Khu công nghiệp', 'text'], ['industry', 'Ngành nghề', 'text'], ['contact_name', 'Người liên hệ', 'text'], ['contact_position', 'Chức vụ', 'text'],
+      ['contact_phone', 'SĐT người liên hệ', 'text'], ['interested_services', 'Dịch vụ quan tâm', 'text', 2], ['assigned_employee_id', 'Nhân viên phụ trách', 'employee_select']],
+    columns: [['code', 'Mã'], ['name', 'Tên khách hàng'], ['industrial_zone', 'KCN'], ['contact_name', 'Người liên hệ'], ['contact_phone', 'SĐT liên hệ'], ['industry', 'Ngành nghề'], ['assigned_employee_name', 'Phụ trách']]
   },
   suppliers: {
     title: 'Nhà cung cấp', fields: [['code', 'Mã NCC', 'text'], ['name', 'Tên nhà cung cấp', 'text'], ['phone', 'Điện thoại', 'text'], ['tax_code', 'Mã số thuế', 'text'], ['address', 'Địa chỉ', 'text', 2]],
@@ -73,15 +80,46 @@ function toast(message, error = false) {
   toast.timer = setTimeout(() => node.className = 'toast', 3200);
 }
 
-function openModal(html) { $('#modal-body').innerHTML = html; $('#modal').classList.remove('hidden'); }
+function openModal(html) { $('#modal-body').innerHTML = html; $('#modal').classList.remove('hidden'); attachTableTools($('#modal-body')); }
 function closeModal() { $('#modal').classList.add('hidden'); $('#modal-body').innerHTML = ''; }
 function options(rows, selected = '') { return rows.map(row => `<option value="${row.id}" ${String(row.id) === String(selected) ? 'selected' : ''}>${esc(row.code)} — ${esc(row.name)}</option>`).join(''); }
 function statusLabel(status) { return ({ DRAFT: 'Nháp', SENT: 'Đã gửi', WON: 'Đã chốt', CONVERTED: 'Đã xuất', CANCELLED: 'Đã hủy', RECEIVED: 'Đã nhận', POSTED: 'Đã ghi sổ' })[status] || status; }
 function badge(status) { return `<span class="badge ${status}">${statusLabel(status)}</span>`; }
-const quoteTypeLabels = { FULL_SERVICE: 'Vật tư + gia công', CUSTOMER_MATERIAL: 'Chỉ gia công' };
+const quoteTypeLabels = { FULL_SERVICE: 'Vật tư + gia công + sơn', CUSTOMER_MATERIAL: 'Gia công + sơn', PAINT_ONLY: 'Chỉ sơn tĩnh điện' };
 const invoiceStatusLabels = { PENDING: 'Chưa xuất HĐ', ISSUED: 'Đã xuất HĐ', RETAIL_NO_INVOICE: 'Không lấy HĐ – Bán lẻ' };
 
 async function refreshBootstrap() { state.bootstrap = await window.crm.bootstrap(); }
+
+function attachTableTools(root = $('#content')) {
+  $$('.table-wrap', root).forEach((wrap, tableIndex) => {
+    const table = $('table', wrap);
+    const body = $('tbody', table);
+    if (!table || !body || wrap.previousElementSibling?.classList.contains('table-tools')) return;
+    const rows = $$('tr', body).filter(row => !row.querySelector('.empty'));
+    const numericColumns = $$('thead th', table).map((cell, index) => ({ cell, index })).filter(item => item.cell.classList.contains('num'));
+    const tools = document.createElement('div');
+    tools.className = 'table-tools';
+    tools.innerHTML = `<input type="search" aria-label="Lọc bảng ${tableIndex + 1}" placeholder="Lọc nhanh trong bảng..."><span class="table-summary"></span>`;
+    wrap.before(tools);
+    const input = $('input', tools);
+    const summary = $('.table-summary', tools);
+    const update = () => {
+      const keyword = input.value.trim().toLocaleLowerCase('vi');
+      let visible = 0;
+      const totals = new Map(numericColumns.map(item => [item.index, 0]));
+      rows.forEach(row => {
+        row.hidden = keyword && !row.textContent.toLocaleLowerCase('vi').includes(keyword);
+        if (row.hidden) return;
+        visible += 1;
+        numericColumns.forEach(({ index }) => totals.set(index, totals.get(index) + number(row.cells[index]?.textContent || 0)));
+      });
+      const values = numericColumns.map(({ cell, index }) => `${cell.textContent.trim()}: ${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 3 }).format(totals.get(index))}`).join(' · ');
+      summary.textContent = `Hiển thị ${visible}/${rows.length} dòng${values ? ` · ${values}` : ''}`;
+    };
+    input.addEventListener('input', update);
+    update();
+  });
+}
 
 async function navigate(page) {
   state.page = page;
@@ -91,6 +129,11 @@ async function navigate(page) {
   $('#content').innerHTML = '<div class="panel">Đang tải dữ liệu…</div>';
   try {
     if (page === 'dashboard') await renderDashboard();
+    else if (page === 'sales-dashboard') await renderSalesDashboard();
+    else if (page === 'sales-tasks') await renderSalesTasks();
+    else if (page === 'opportunities') await renderOpportunities();
+    else if (page === 'quote-requests') await renderQuoteRequests();
+    else if (page === 'sales-kpis') await renderSalesKpis();
     else if (masterConfig[page]) await renderMaster(page);
     else if (page === 'quotes') await renderQuotes();
     else if (page === 'sales') await renderSales();
@@ -104,6 +147,7 @@ async function navigate(page) {
     else if (page === 'reports') await renderReports();
     else if (page === 'print-templates') await renderPrintTemplates();
     else if (page === 'settings') await renderSettings();
+    attachTableTools();
   } catch (error) { $('#content').innerHTML = `<div class="panel"><strong>Không tải được dữ liệu:</strong> ${esc(error.message)}</div>`; }
 }
 
@@ -122,12 +166,77 @@ async function renderDashboard() {
   </div><div class="hint">Bản đầu tiên đang dùng quy tắc giá hình chữ nhật. Trước khi dùng số liệu để chào giá chính thức, hãy kiểm tra lại đơn vị chi phí và quy tắc hao hụt với file Excel gốc.</div></div>`;
 }
 
+const taskTypeLabels = { CALL: 'Gọi điện', VISIT: 'Đi thị trường', MEETING: 'Gặp khách', FOLLOW_UP: 'Chăm sóc', OTHER: 'Khác' };
+const taskStatusLabels = { TODO: 'Chưa làm', DOING: 'Đang làm', DONE: 'Hoàn thành' };
+const opportunityStageLabels = { APPROACH: 'Tiếp cận', NEEDS: 'Xác định nhu cầu', RFQ: 'Nhận RFQ', QUOTED: 'Đã báo giá', NEGOTIATION: 'Đàm phán', WON: 'Thắng', LOST: 'Mất đơn' };
+const requestStatusLabels = { NEW: 'Mới tiếp nhận', ASSIGNED: 'Đã phân công', QUOTED: 'Đã báo giá', CLOSED: 'Đã đóng' };
+const blankOptions = (rows, selected, label = '— Chưa chọn —') => `<option value="">${label}</option>${options(rows, selected)}`;
+
+async function renderSalesDashboard() {
+  const data = await window.crm.getSalesDashboard();
+  const tasks = data.tasks.length ? data.tasks.map(row => `<tr><td>${esc(row.due_date)}</td><td>${esc(row.title)}</td><td>${esc(row.customer_name || '')}</td><td>${esc(row.employee_name || '')}</td><td>${esc(taskStatusLabels[row.status] || row.status)}</td></tr>`).join('') : '<tr><td colspan="5" class="empty">Không có công việc đến hạn</td></tr>';
+  const kpis = data.kpis.length ? data.kpis.map(row => `<tr><td>${esc(row.name)}</td><td>${row.actual_customers}/${row.target_customers}</td><td>${row.actual_calls}/${row.target_calls}</td><td>${row.actual_meetings}/${row.target_meetings}</td><td>${money(row.actual_revenue)} / ${money(row.target_revenue)} ₫</td><td>${row.bonus_percent}%</td></tr>`).join('') : '<tr><td colspan="6" class="empty">Chưa thiết lập KPI tháng này</td></tr>';
+  $('#content').innerHTML = `<div class="cards"><div class="stat-card"><span>Khách hàng B2B</span><strong>${data.customers}</strong><em>Đang hoạt động</em></div><div class="stat-card"><span>Công việc đến hạn</span><strong>${data.dueTasks}</strong><em>Trong 7 ngày</em></div><div class="stat-card"><span>Cơ hội đang mở</span><strong>${data.openOpportunities}</strong><em>${money(data.pipelineValue)} ₫ dự kiến</em></div><div class="stat-card"><span>Báo giá chờ phản hồi</span><strong>${data.pendingQuotes}</strong><em>Trạng thái đã gửi</em></div></div>
+    <div class="panel"><div class="panel-head"><div><h2>Công việc sắp đến hạn</h2><p>Ưu tiên chăm sóc và theo dõi khách hàng</p></div><button class="btn primary" id="new-sales-task">+ Công việc</button></div><div class="table-wrap"><table><thead><tr><th>Hạn</th><th>Công việc</th><th>Khách hàng</th><th>Phụ trách</th><th>Trạng thái</th></tr></thead><tbody>${tasks}</tbody></table></div></div>
+    <div class="panel"><div class="panel-head"><div><h2>KPI tháng ${today().slice(0, 7)}</h2><p>Kết quả ghi nhận từ khách hàng, lịch chăm sóc và đơn bán đã chốt</p></div></div><div class="table-wrap"><table><thead><tr><th>Nhân viên</th><th>Khách hàng</th><th>Cuộc gọi</th><th>Gặp khách</th><th>Doanh số / Mục tiêu</th><th>Thưởng (%)</th></tr></thead><tbody>${kpis}</tbody></table></div></div>`;
+}
+
+async function renderSalesTasks() {
+  const rows = await window.crm.listSalesTasks(); state.salesTasks = rows;
+  const body = rows.length ? rows.map(row => `<tr><td>${esc(row.due_date)}</td><td><strong>${esc(row.title)}</strong></td><td>${esc(taskTypeLabels[row.task_type] || row.task_type)}</td><td>${esc(row.customer_name || '')}</td><td>${esc(row.employee_name || '')}</td><td>${esc(taskStatusLabels[row.status] || row.status)}</td><td>${esc(row.notes)}</td><td><div class="actions"><button class="btn small" data-sales-task-edit="${row.id}">Sửa</button><button class="btn small danger" data-sales-task-delete="${row.id}">Xóa</button></div></td></tr>`).join('') : '<tr><td colspan="8" class="empty">Chưa có công việc Sale</td></tr>';
+  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Kế hoạch và công việc Sale</h2><p>Gọi điện, đi thị trường, gặp khách và lịch chăm sóc</p></div><button class="btn primary" id="new-sales-task">+ Thêm công việc</button></div><div class="table-wrap"><table><thead><tr><th>Hạn</th><th>Công việc</th><th>Loại</th><th>Khách hàng</th><th>Phụ trách</th><th>Trạng thái</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+
+async function showSalesTaskForm(id) {
+  await refreshBootstrap(); const row = (state.salesTasks || []).find(item => item.id === Number(id)) || {};
+  openModal(`<h2>${id ? 'Sửa' : 'Thêm'} công việc Sale</h2><form id="sales-task-form" data-id="${id || ''}"><div class="form-grid"><div class="field span-2"><label>Tiêu đề *</label><input name="title" value="${esc(row.title || '')}" required></div><div class="field"><label>Loại công việc</label><select name="taskType">${Object.entries(taskTypeLabels).map(([value,label]) => `<option value="${value}" ${row.task_type === value ? 'selected' : ''}>${label}</option>`).join('')}</select></div><div class="field"><label>Hạn thực hiện *</label><input name="dueDate" type="date" value="${esc(row.due_date || today())}" required></div><div class="field"><label>Khách hàng</label><select name="customerId">${blankOptions(state.bootstrap.customers, row.customer_id)}</select></div><div class="field"><label>Nhân viên</label><select name="employeeId">${blankOptions(state.bootstrap.employees, row.employee_id)}</select></div><div class="field"><label>Trạng thái</label><select name="status">${Object.entries(taskStatusLabels).map(([value,label]) => `<option value="${value}" ${row.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select></div><div class="field span-4"><label>Ghi chú</label><textarea name="notes">${esc(row.notes || '')}</textarea></div></div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu</button></div></form>`);
+}
+
+async function renderOpportunities() {
+  const rows = await window.crm.listOpportunities(); state.opportunities = rows;
+  const body = rows.length ? rows.map(row => `<tr><td><strong>${esc(row.code)}</strong></td><td>${esc(row.customer_name)}</td><td>${esc(row.employee_name || '')}</td><td>${esc(row.service)}</td><td>${esc(opportunityStageLabels[row.stage] || row.stage)}</td><td class="num">${money(row.expected_value)} ₫</td><td>${esc(row.expected_close_date)}</td><td>${esc(row.quote_number || '')}</td><td><div class="actions"><button class="btn small" data-opportunity-edit="${row.id}">Sửa</button><button class="btn small danger" data-opportunity-delete="${row.id}">Xóa</button></div></td></tr>`).join('') : '<tr><td colspan="9" class="empty">Chưa có cơ hội bán hàng</td></tr>';
+  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Cơ hội bán hàng</h2><p>Tiếp cận → nhu cầu → RFQ → báo giá → đàm phán → kết quả</p></div><button class="btn primary" id="new-opportunity">+ Thêm cơ hội</button></div><div class="table-wrap"><table><thead><tr><th>Mã</th><th>Khách hàng</th><th>Phụ trách</th><th>Dịch vụ</th><th>Giai đoạn</th><th class="num">Doanh số dự kiến</th><th>Ngày dự kiến</th><th>Báo giá</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+
+async function showOpportunityForm(id) {
+  await refreshBootstrap(); const row = (state.opportunities || []).find(item => item.id === Number(id)) || {}; const quotes = await window.crm.listQuotes();
+  openModal(`<h2>${id ? 'Sửa' : 'Thêm'} cơ hội bán hàng</h2><form id="opportunity-form" data-id="${id || ''}"><div class="form-grid"><div class="field"><label>Khách hàng *</label><select name="customerId" required>${options(state.bootstrap.customers, row.customer_id)}</select></div><div class="field"><label>Nhân viên phụ trách</label><select name="employeeId">${blankOptions(state.bootstrap.employees, row.employee_id)}</select></div><div class="field"><label>Giai đoạn</label><select name="stage">${Object.entries(opportunityStageLabels).map(([value,label]) => `<option value="${value}" ${row.stage === value ? 'selected' : ''}>${label}</option>`).join('')}</select></div><div class="field"><label>Ngày chốt dự kiến</label><input name="expectedCloseDate" type="date" value="${esc(row.expected_close_date || '')}"></div><div class="field span-2"><label>Dịch vụ quan tâm</label><input name="service" value="${esc(row.service || '')}"></div><div class="field"><label>Doanh số dự kiến</label><input name="expectedValue" class="money-input" inputmode="numeric" value="${moneyInput(row.expected_value || 0)}"></div><div class="field"><label>Báo giá liên kết</label><select name="quoteId"><option value="">Chưa liên kết</option>${quotes.map(q => `<option value="${q.id}" ${Number(row.quote_id) === q.id ? 'selected' : ''}>${esc(q.number)} — ${esc(q.customer_name)}</option>`).join('')}</select></div><div class="field span-4"><label>Ghi chú</label><textarea name="notes">${esc(row.notes || '')}</textarea></div></div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu</button></div></form>`);
+}
+
+async function renderQuoteRequests() {
+  const rows = await window.crm.listQuoteRequests(); state.quoteRequests = rows;
+  const body = rows.length ? rows.map(row => `<tr><td><strong>${esc(row.number)}</strong></td><td>${esc(row.request_date)}</td><td>${esc(row.customer_name)}</td><td>${esc(row.contact_name)}</td><td>${esc(row.drawing_reference)}</td><td>${esc(row.material)}</td><td class="num">${row.quantity}</td><td>${esc(row.employee_name || '')}</td><td>${esc(requestStatusLabels[row.status] || row.status)}</td><td><div class="actions"><button class="btn small" data-quote-request-edit="${row.id}">Chi tiết / Sửa</button><button class="btn small danger" data-quote-request-delete="${row.id}">Xóa</button></div></td></tr>`).join('') : '<tr><td colspan="10" class="empty">Chưa có yêu cầu báo giá</td></tr>';
+  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Yêu cầu báo giá RFQ</h2><p>Bản vẽ, quy cách, vật tư, số lượng và người tiếp nhận</p></div><button class="btn primary" id="new-quote-request">+ Tiếp nhận yêu cầu</button></div><div class="table-wrap"><table><thead><tr><th>Số</th><th>Ngày</th><th>Khách hàng</th><th>Liên hệ</th><th>Bản vẽ</th><th>Vật tư</th><th class="num">Số lượng</th><th>Phụ trách</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+
+async function showQuoteRequestForm(id) {
+  await refreshBootstrap(); const row = (state.quoteRequests || []).find(item => item.id === Number(id)) || {};
+  openModal(`<h2>${id ? 'Chi tiết / Sửa' : 'Tiếp nhận'} yêu cầu báo giá</h2><form id="quote-request-form" data-id="${id || ''}"><div class="form-grid"><div class="field"><label>Ngày tiếp nhận *</label><input name="requestDate" type="date" value="${esc(row.request_date || today())}" required></div><div class="field"><label>Khách hàng *</label><select name="customerId" required>${options(state.bootstrap.customers, row.customer_id)}</select></div><div class="field"><label>Người tiếp nhận</label><select name="employeeId">${blankOptions(state.bootstrap.employees, row.employee_id)}</select></div><div class="field"><label>Trạng thái</label><select name="status">${Object.entries(requestStatusLabels).map(([value,label]) => `<option value="${value}" ${row.status === value ? 'selected' : ''}>${label}</option>`).join('')}</select></div><div class="field"><label>Người liên hệ</label><input name="contactName" value="${esc(row.contact_name || '')}"></div><div class="field"><label>Số bản vẽ / tệp tham chiếu</label><input name="drawingReference" value="${esc(row.drawing_reference || '')}"></div><div class="field"><label>Vật tư</label><input name="material" value="${esc(row.material || '')}"></div><div class="field"><label>Số lượng</label><input name="quantity" type="number" min="0" step="any" value="${row.quantity || 0}"></div><div class="field span-4"><label>Quy cách / yêu cầu kỹ thuật</label><textarea name="specification">${esc(row.specification || '')}</textarea></div><div class="field span-4"><label>Ghi chú</label><textarea name="notes">${esc(row.notes || '')}</textarea></div></div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu</button></div></form>`);
+}
+
+async function renderSalesKpis() {
+  const rows = await window.crm.listSalesKpis(); state.salesKpis = rows;
+  const body = rows.length ? rows.map(row => `<tr><td>${esc(row.period)}</td><td>${esc(row.employee_name)}</td><td class="num">${row.target_customers}</td><td class="num">${row.target_calls}</td><td class="num">${row.target_meetings}</td><td class="num">${money(row.target_revenue)} ₫</td><td class="num">${row.bonus_percent}%</td><td>${esc(row.notes)}</td><td><div class="actions"><button class="btn small" data-sales-kpi-edit="${row.id}">Sửa</button><button class="btn small danger" data-sales-kpi-delete="${row.id}">Xóa</button></div></td></tr>`).join('') : '<tr><td colspan="9" class="empty">Chưa thiết lập KPI</td></tr>';
+  $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>KPI Sale theo tháng</h2><p>Mục tiêu khách hàng, hoạt động, doanh số và tỷ lệ thưởng</p></div><button class="btn primary" id="new-sales-kpi">+ Thiết lập KPI</button></div><div class="table-wrap"><table><thead><tr><th>Tháng</th><th>Nhân viên</th><th class="num">KH mục tiêu</th><th class="num">Cuộc gọi</th><th class="num">Gặp khách</th><th class="num">Doanh số mục tiêu</th><th class="num">Thưởng (%)</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+}
+
+async function showSalesKpiForm(id) {
+  await refreshBootstrap(); const row = (state.salesKpis || []).find(item => item.id === Number(id)) || {};
+  openModal(`<h2>${id ? 'Sửa' : 'Thiết lập'} KPI Sale</h2><form id="sales-kpi-form" data-id="${id || ''}"><div class="form-grid"><div class="field"><label>Tháng *</label><input name="period" type="month" value="${esc(row.period || today().slice(0, 7))}" required></div><div class="field"><label>Nhân viên *</label><select name="employeeId" required>${options(state.bootstrap.employees, row.employee_id)}</select></div><div class="field"><label>Khách hàng mục tiêu</label><input name="targetCustomers" type="number" min="0" value="${row.target_customers || 0}"></div><div class="field"><label>Cuộc gọi mục tiêu</label><input name="targetCalls" type="number" min="0" value="${row.target_calls || 0}"></div><div class="field"><label>Gặp khách mục tiêu</label><input name="targetMeetings" type="number" min="0" value="${row.target_meetings || 0}"></div><div class="field"><label>Doanh số mục tiêu</label><input name="targetRevenue" class="money-input" inputmode="numeric" value="${moneyInput(row.target_revenue || 0)}"></div><div class="field"><label>Thưởng theo doanh số (%)</label><input name="bonusPercent" type="number" min="0" max="100" step="any" value="${row.bonus_percent || 0}"></div><div class="field span-4"><label>Ghi chú</label><textarea name="notes">${esc(row.notes || '')}</textarea></div></div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu</button></div></form>`);
+}
+
+async function showCustomerCare(customerId) {
+  await refreshBootstrap(); const customer = state.bootstrap.customers.find(row => row.id === Number(customerId)); const rows = await window.crm.listCareLogs(Number(customerId));
+  const body = rows.length ? rows.map(row => `<tr><td>${esc(row.care_date)}</td><td>${esc(taskTypeLabels[row.care_type] || row.care_type)}</td><td>${esc(row.employee_name || '')}</td><td>${esc(row.content)}</td><td>${esc(row.next_action_date)}</td><td><button type="button" class="btn small danger" data-care-log-delete="${row.id}" data-customer-id="${customerId}">Xóa</button></td></tr>`).join('') : '<tr><td colspan="6" class="empty">Chưa có lịch sử chăm sóc</td></tr>';
+  openModal(`<h2>Chăm sóc khách hàng — ${esc(customer?.name || '')}</h2><form id="care-log-form" data-customer-id="${customerId}"><div class="form-grid"><div class="field"><label>Ngày chăm sóc</label><input name="careDate" type="date" value="${today()}"></div><div class="field"><label>Hình thức</label><select name="careType">${Object.entries(taskTypeLabels).map(([value,label]) => `<option value="${value}">${label}</option>`).join('')}</select></div><div class="field"><label>Nhân viên</label><select name="employeeId">${blankOptions(state.bootstrap.employees)}</select></div><div class="field"><label>Ngày chăm sóc tiếp</label><input name="nextActionDate" type="date"></div><div class="field span-4"><label>Nội dung *</label><input name="content" required></div></div><div class="form-actions inline-actions"><button class="btn primary">Lưu lịch sử</button></div></form><div class="section-title">Lịch sử chăm sóc</div><div class="table-wrap"><table><thead><tr><th>Ngày</th><th>Hình thức</th><th>Nhân viên</th><th>Nội dung</th><th>Chăm sóc tiếp</th><th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div>`);
+}
+
 async function renderMaster(type) {
   const cfg = masterConfig[type];
   const rows = await window.crm.listMaster(type);
   const head = cfg.columns.map(([, label]) => `<th>${label}</th>`).join('');
   const display = (row, key, format) => format === 'money' ? money(row[key]) : format === 'boolean' ? (Number(row[key]) ? 'Có' : 'Không') : key === 'transaction_type' ? (row[key] === 'RECEIPT' ? 'Thu' : 'Chi') : esc(row[key]);
-  const body = rows.length ? rows.map(row => `<tr>${cfg.columns.map(([key,, format]) => `<td class="${format === 'money' ? 'num' : ''}">${display(row, key, format)}</td>`).join('')}<td class="actions"><button class="btn small" data-master-edit="${type}" data-id="${row.id}">Sửa</button><button class="btn small danger" data-master-delete="${type}" data-id="${row.id}">Xóa</button></td></tr>`).join('') : '<tr><td class="empty" colspan="10">Chưa có dữ liệu</td></tr>';
+  const body = rows.length ? rows.map(row => `<tr>${cfg.columns.map(([key,, format]) => `<td class="${format === 'money' ? 'num' : ''}">${display(row, key, format)}</td>`).join('')}<td class="actions">${type === 'customers' ? `<button class="btn small teal" data-customer-care="${row.id}">Chăm sóc</button>` : ''}<button class="btn small" data-master-edit="${type}" data-id="${row.id}">Sửa</button><button class="btn small danger" data-master-delete="${type}" data-id="${row.id}">Xóa</button></td></tr>`).join('') : '<tr><td class="empty" colspan="10">Chưa có dữ liệu</td></tr>';
   $('#content').innerHTML = `<div class="panel"><div class="panel-head"><div><h2>Danh sách ${cfg.title.toLowerCase()}</h2><p>${rows.length} bản ghi đang hoạt động</p></div><button class="btn primary" data-master-new="${type}">+ Thêm mới</button></div><div class="table-wrap"><table><thead><tr>${head}<th>Thao tác</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
   state.masterRows = rows;
 }
@@ -138,6 +247,7 @@ function showMasterForm(type, id) {
   const fields = cfg.fields.map(([key, label, inputType, span]) => {
     if (inputType === 'transaction_type') return `<div class="field"><label>${label}</label><select name="${key}"><option value="RECEIPT" ${row[key] === 'RECEIPT' ? 'selected' : ''}>Thu</option><option value="PAYMENT" ${row[key] !== 'RECEIPT' ? 'selected' : ''}>Chi</option></select></div>`;
     if (inputType === 'boolean') return `<div class="field"><label>${label}</label><select name="${key}"><option value="1" ${Number(row[key] ?? 1) ? 'selected' : ''}>Có</option><option value="0" ${!Number(row[key] ?? 1) ? 'selected' : ''}>Không</option></select></div>`;
+    if (inputType === 'employee_select') return `<div class="field"><label>${label}</label><select name="${key}"><option value="">Chưa phân công</option>${options(state.bootstrap.employees, row[key])}</select></div>`;
     return `<div class="field ${span ? `span-${span}` : ''}"><label>${label}</label><input name="${key}" type="${inputType === 'money' ? 'text' : inputType}" ${inputType === 'money' ? 'inputmode="numeric" class="money-input"' : ''} value="${esc(inputType === 'money' ? moneyInput(row[key] ?? '') : row[key] ?? '')}" ${key === 'code' || key === 'name' ? 'required' : ''}></div>`;
   }).join('');
   openModal(`<h2>${id ? 'Sửa' : 'Thêm'} ${cfg.title.toLowerCase()}</h2><form id="master-form" data-type="${type}" data-id="${id || ''}"><div class="form-grid">${fields}</div><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">Lưu</button></div></form>`);
@@ -176,25 +286,28 @@ async function showQuoteInvoiceForm(id) {
 
 function quoteLine(index = Date.now()) {
   const b = state.bootstrap;
-  return `<div class="line-card quote-line" data-index="${index}"><button type="button" class="btn small danger remove-line">Xóa dòng</button><div class="line-grid">
+  return `<div class="line-card quote-line" data-index="${index}"><button type="button" class="btn small danger remove-line">Xóa dòng</button><input type="hidden" name="stockQuantity" value="0"><div class="line-grid quote-row quote-row-7">
     <div class="field"><label>Vật tư trừ kho</label><select name="productId"><option value="">Không trừ kho</option>${options(b.products)}</select></div>
     <div class="field"><label>Tên sản phẩm *</label><input name="description" required></div><div class="field"><label>ĐVT</label><input name="unit" value="cái"></div>
-    <div class="field"><label>Số lượng *</label><input name="quantity" type="number" min="0.001" step="any" value="1" required></div><div class="field"><label>SL tiêu hao kho</label><input name="stockQuantity" type="number" min="0" step="any" value="0"></div>
-    <div class="field"><label>Dài (mm)</label><input name="lengthMm" type="number" min="0" step="any"></div><div class="field"><label>Rộng (mm)</label><input name="widthMm" type="number" min="0" step="any"></div><div class="field"><label>Dày (mm)</label><input name="thicknessMm" type="number" min="0" step="any"></div>
-    <div class="field"><label>Tỷ trọng</label><input name="density" type="number" min="0" step="any" value="7.85"></div><div class="field"><label>Giá vật liệu/kg</label><input name="materialPricePerKg" type="text" inputmode="numeric" class="money-input"></div>
-    <div class="field"><label>Giờ gia công</label><input name="laborHours" type="number" min="0" step="any"></div><div class="field"><label>Đơn giá/giờ</label><input name="laborRatePerHour" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Số người</label><input name="workerCount" type="number" min="1" step="any" value="1"></div>
-    <div class="field"><label>VT Tiêu hao/SP</label><input name="consumablesPerItem" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Điện (kWh)</label><input name="electricityKwh" type="number" min="0" step="any"></div><div class="field"><label>Giá điện/kWh</label><input name="electricityRate" type="text" inputmode="numeric" class="money-input"></div>
-    <div class="field"><label>Khấu hao MMTB/giờ</label><input name="depreciationPerHour" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Số mặt sơn</label><input name="coatingSides" type="number" min="1" step="1" value="1"></div><div class="field"><label>Giá sơn/m²</label><input name="coatingPricePerM2" type="text" inputmode="numeric" class="money-input"></div>
-    <div class="field"><label>Hao hụt (%)</label><input name="wastePercent" type="number" min="0" step="any" value="0"></div><div class="field"><label>Lợi nhuận (%)</label><input name="profitPercent" type="number" min="0" step="any" value="15"></div><div class="field"><label>VAT (%)</label><input name="vatPercent" type="number" min="0" step="any" value="10"></div>
-  </div><div class="line-total"><span>Khối lượng: <b data-result="weight">0</b> kg</span><span>Giá vốn: <b data-result="cost">0</b> ₫</span><span>Thành tiền: <strong data-result="total">0 ₫</strong></span></div></div>`;
+    <div class="field"><label>Dài (mm)</label><input name="lengthMm" type="number" min="0" step="any"></div><div class="field"><label>Rộng (mm)</label><input name="widthMm" type="number" min="0" step="any"></div><div class="field"><label>Dày (mm)</label><input name="thicknessMm" type="number" min="0" step="any"></div><div class="field"><label>Số lượng *</label><input name="quantity" type="number" min="0.001" step="any" value="1" required></div>
+  </div><div class="line-grid quote-row quote-row-10">
+    <div class="field"><label>Tỷ trọng</label><input name="density" type="number" min="0" step="any" value="7.85"></div><div class="field"><label>Giá vật liệu GC/kg</label><input name="materialPricePerKg" type="text" inputmode="numeric" class="money-input"></div>
+    <div class="field"><label>Bột sơn trừ kho</label><select name="paintProductId"><option value="">Không trừ sơn</option>${options(b.products)}</select></div><div class="field"><label>Giá vật liệu sơn/kg</label><input name="paintMaterialPricePerKg" type="text" inputmode="numeric" class="money-input"></div>
+    <div class="field"><label>Giờ gia công</label><input name="laborHours" type="number" min="0" step="any"></div><div class="field"><label>Giờ sơn tĩnh điện</label><input name="paintLaborHours" type="number" min="0" step="any"></div><div class="field"><label>Định mức bột sơn kg/m²</label><input name="powderNormKgM2" type="number" min="0" step="any"></div>
+    <div class="field"><label>Số mặt sơn</label><input name="coatingSides" type="number" min="1" step="1" value="1"></div><div class="field"><label>Đơn giá/giờ</label><input name="laborRatePerHour" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Số người</label><input name="workerCount" type="number" min="1" step="any" value="1"></div>
+  </div><div class="line-grid quote-row quote-row-9">
+    <div class="field"><label>VT Tiêu hao/SP</label><input name="consumablesPerItem" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Khấu hao MMTB/giờ</label><input name="depreciationPerHour" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Chi phí sơn tĩnh điện đ/m²</label><input name="coatingPricePerM2" type="text" inputmode="numeric" class="money-input"></div>
+    <div class="field"><label>Điện (kWh)</label><input name="electricityKwh" type="number" min="0" step="any"></div><div class="field"><label>Giá điện/kWh</label><input name="electricityRate" type="text" inputmode="numeric" class="money-input"></div>
+    <div class="field"><label>Hao hụt (%)</label><input name="wastePercent" type="number" min="0" step="any" value="0"></div><div class="field"><label>Lợi nhuận (%)</label><input name="profitPercent" type="number" min="0" step="any" value="15"></div><div class="field"><label>CK % khách (0–20)</label><input name="customerDiscountPercent" type="number" min="0" max="20" step="any" value="0"></div><div class="field"><label>VAT (%)</label><input name="vatPercent" type="number" min="0" step="any" value="10"></div>
+  </div><div class="line-total"><span>KL vật liệu: <b data-result="weight">0</b> kg</span><span>KL sơn: <b data-result="paint-weight">0</b> kg</span><span>Giá vốn: <b data-result="cost">0</b> ₫</span><span>CK theo dõi: <b data-result="discount">0</b> ₫</span><span>Thành tiền: <strong data-result="total">0 ₫</strong></span></div></div>`;
 }
 
 function quoteItemFromDb(item) {
-  const fields = { productId: 'product_id', description: 'description', unit: 'unit', quantity: 'quantity', stockQuantity: 'stock_quantity',
+  const fields = { productId: 'product_id', paintProductId: 'paint_product_id', description: 'description', unit: 'unit', quantity: 'quantity', stockQuantity: 'stock_quantity',
     lengthMm: 'length_mm', widthMm: 'width_mm', thicknessMm: 'thickness_mm', density: 'density', materialPricePerKg: 'material_price_per_kg',
-    laborHours: 'labor_hours', laborRatePerHour: 'labor_rate_per_hour', workerCount: 'worker_count', consumablesPerItem: 'consumables_per_item',
+    paintMaterialPricePerKg: 'paint_material_price_per_kg', laborHours: 'labor_hours', paintLaborHours: 'paint_labor_hours', laborRatePerHour: 'labor_rate_per_hour', workerCount: 'worker_count', consumablesPerItem: 'consumables_per_item',
     electricityKwh: 'electricity_kwh', electricityRate: 'electricity_rate', depreciationPerHour: 'depreciation_per_hour', coatingSides: 'coating_sides',
-    coatingPricePerM2: 'coating_price_per_m2', wastePercent: 'waste_percent', profitPercent: 'profit_percent', vatPercent: 'vat_percent' };
+    powderNormKgM2: 'powder_norm_kg_m2', coatingPricePerM2: 'coating_price_per_m2', wastePercent: 'waste_percent', profitPercent: 'profit_percent', customerDiscountPercent: 'customer_discount_percent', vatPercent: 'vat_percent' };
   return Object.fromEntries(Object.entries(fields).map(([key, source]) => [key, item[source]]));
 }
 
@@ -215,10 +328,12 @@ async function showQuoteForm(id) {
     <div class="field"><label>Ngày báo giá</label><input name="date" type="date" value="${esc(quote?.quote_date || today())}" required></div>
     <div class="field"><label>Khách hàng</label><select name="customerId" required>${options(state.bootstrap.customers, quote?.customer_id)}</select></div>
     <div class="field"><label>Kho xuất</label><select name="warehouseId" required>${options(state.bootstrap.warehouses, quote?.warehouse_id)}</select></div>
-    <div class="field"><label>Loại báo giá</label><select name="quoteType"><option value="FULL_SERVICE" ${quote?.quote_type !== 'CUSTOMER_MATERIAL' ? 'selected' : ''}>Khách mua vật tư và gia công</option><option value="CUSTOMER_MATERIAL" ${quote?.quote_type === 'CUSTOMER_MATERIAL' ? 'selected' : ''}>Khách cung cấp vật tư, chỉ gia công</option></select></div>
-    <div class="field span-4"><label>Ghi chú / điều khoản</label><input name="notes" value="${esc(quote?.notes || '')}"></div>
+    <div class="field"><label>Loại báo giá</label><select name="quoteType"><option value="FULL_SERVICE" ${quote?.quote_type === 'FULL_SERVICE' || !quote ? 'selected' : ''}>Cung cấp vật tư + gia công + sơn</option><option value="CUSTOMER_MATERIAL" ${quote?.quote_type === 'CUSTOMER_MATERIAL' ? 'selected' : ''}>Gia công + sơn tĩnh điện</option><option value="PAINT_ONLY" ${quote?.quote_type === 'PAINT_ONLY' ? 'selected' : ''}>Chỉ sơn tĩnh điện</option></select></div>
+    <div class="field"><label>Nhân viên Sale</label><select name="assignedEmployeeId"><option value="">Chưa phân công</option>${options(state.bootstrap.employees, quote?.assigned_employee_id)}</select></div>
+    <div class="field"><label>Phí vận chuyển khách trả</label><input name="shippingCost" class="money-input" inputmode="numeric" value="${moneyInput(quote?.shipping_cost || 0)}"></div><div class="field"><label>VAT vận chuyển (%)</label><input name="shippingVatPercent" type="number" min="0" step="any" value="${quote?.shipping_vat_percent ?? 10}"></div>
+    <div class="field span-2"><label>Thông tin vận chuyển</label><input name="shippingInfo" value="${esc(quote?.shipping_info || '')}" placeholder="Để trống nếu công ty trả"></div><div class="field span-2"><label>Ghi chú / điều khoản</label><input name="notes" value="${esc(quote?.notes || '')}"></div>
     <div id="quote-customer-info" class="field hint span-4"></div>
-  </div><div class="hint">SL tiêu hao kho là số lượng vật tư sẽ bị trừ khi xuất bán. Có thể nhập kg, tấm hoặc đơn vị khác nhưng phải khớp với đơn vị của hàng hóa đã chọn.</div><div class="section-title">Chi tiết giá thành</div><div id="quote-lines">${items.map((_, index) => quoteLine(index)).join('')}</div><button type="button" class="btn" id="add-quote-line">+ Thêm dòng</button><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">${quote ? 'Lưu thay đổi' : 'Lưu báo giá'}</button></div></form>`);
+  </div><div class="hint">Khi xuất bán, vật tư chính được trừ theo khối lượng tính từ kích thước; bột sơn được trừ theo diện tích × định mức × số mặt sơn × số lượng. Chiết khấu khách chỉ theo dõi nội bộ, không trừ vào tổng tiền và không in trên phiếu xuất bán.</div><div class="section-title">Chi tiết giá thành</div><div id="quote-lines">${items.map((_, index) => quoteLine(index)).join('')}</div><button type="button" class="btn" id="add-quote-line">+ Thêm dòng</button><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">${quote ? 'Lưu thay đổi' : 'Lưu báo giá'}</button></div></form>`);
   $$('.quote-line').forEach((line, index) => Object.entries(items[index]).forEach(([name, value]) => {
     const input = $(`[name="${name}"]`, line);
     if (input) input.value = input.classList.contains('money-input') ? moneyInput(value) : value ?? '';
@@ -235,7 +350,9 @@ async function updateQuoteLine(node) {
   if (!node) return;
   const calc = await window.crm.calculateCost(lineData(node));
   $('[data-result="weight"]', node).textContent = calc.totalWeight.toFixed(3);
+  $('[data-result="paint-weight"]', node).textContent = calc.paintWeight.toFixed(3);
   $('[data-result="cost"]', node).textContent = money(calc.costBeforeProfit);
+  $('[data-result="discount"]', node).textContent = money(calc.customerDiscount);
   $('[data-result="total"]', node).textContent = `${money(calc.total)} ₫`;
 }
 
@@ -499,7 +616,7 @@ async function renderSettings() {
 }
 
 function showGuide() {
-  openModal(`<h2>Hướng dẫn sử dụng nhanh</h2><ol><li>Vào <strong>Cài đặt & sao lưu</strong>, nhập thông tin doanh nghiệp và tạo dữ liệu mẫu nếu cần.</li><li>Kiểm tra các danh mục: hàng hóa, khách hàng, nhà cung cấp, kho, quỹ và nhân viên.</li><li>Vào <strong>Báo giá</strong> → Lập báo giá. Nhập số lượng, kích thước và chi phí; ô tiền tự thêm dấu chấm hàng nghìn.</li><li>Dùng <strong>Chi tiết / Sửa</strong> để xem điện thoại, địa chỉ, MST khách hàng và sửa toàn bộ dòng giá thành. Chốt báo giá rồi bấm <strong>Xuất bán</strong> để trừ tồn.</li><li>Vào <strong>Đơn đặt hàng</strong> để đặt mua; chỉ khi bấm Nhận toàn bộ thì tồn kho và công nợ mới tăng.</li><li>Dùng <strong>Nhập xuất kho</strong> cho nhập/bán trực tiếp, chuyển kho và trả hàng.</li><li>Dùng <strong>Thu chi & quỹ</strong> để thu khách, chi nhà cung cấp, chuyển quỹ và tạm ứng.</li><li>Đối chiếu tại Tồn kho, Công nợ và Báo cáo. Sao lưu cuối ngày.</li></ol><div class="hint">Chứng từ kho/quỹ đã ghi sổ: xem Chi tiết; nếu nhập sai, Xóa để hệ thống đảo số liệu rồi lập lại. Dữ liệu xóa là vĩnh viễn.</div><div class="form-actions"><button class="btn primary" data-close-modal>Đã hiểu</button></div>`);
+  openModal(`<h2>Hướng dẫn sử dụng nhanh</h2><ol><li>Vào <strong>Cài đặt & sao lưu</strong>, nhập thông tin doanh nghiệp và tạo dữ liệu mẫu nếu cần.</li><li>Kiểm tra các danh mục: hàng hóa, khách hàng, nhà cung cấp, kho, quỹ và nhân viên.</li><li>Vào <strong>Báo giá</strong> → Lập báo giá. Chọn riêng vật tư chính và bột sơn trừ kho; nhập kích thước, định mức sơn, giờ gia công, giờ sơn và các chi phí.</li><li>Khối lượng vật liệu và sơn được tính tự động. CK khách chỉ theo dõi nội bộ; phí vận chuyển khách trả được cộng trước VAT.</li><li>Dùng <strong>Chi tiết / Sửa</strong> để sửa toàn bộ dòng giá thành. Chốt báo giá rồi bấm <strong>Xuất bán</strong> để trừ tồn.</li><li>Dùng nhóm <strong>CRM Sale B2B</strong> để quản lý công việc, lịch chăm sóc, cơ hội, RFQ và KPI.</li><li>Mọi bảng có ô lọc nhanh, số dòng và tổng các cột số theo kết quả đang hiển thị.</li><li>Vào <strong>Đơn đặt hàng</strong> để đặt mua; chỉ khi bấm Nhận toàn bộ thì tồn kho và công nợ mới tăng.</li><li>Đối chiếu tại Tồn kho, Công nợ và Báo cáo. Sao lưu cuối ngày.</li></ol><div class="hint">Chứng từ kho/quỹ đã ghi sổ: xem Chi tiết; nếu nhập sai, Xóa để hệ thống đảo số liệu rồi lập lại. Dữ liệu xóa là vĩnh viễn.</div><div class="form-actions"><button class="btn primary" data-close-modal>Đã hiểu</button></div>`);
 }
 
 document.addEventListener('click', async event => {
@@ -515,8 +632,22 @@ document.addEventListener('click', async event => {
       if (!confirm('Xóa vĩnh viễn bản ghi này? Dữ liệu đã dùng trong chứng từ sẽ không được phép xóa.')) return;
       await window.crm.deleteMaster(target.dataset.masterDelete, Number(target.dataset.id)); toast('Đã xóa bản ghi.'); return navigate(state.page);
     }
+    if (target.dataset.customerCare !== undefined) return showCustomerCare(Number(target.dataset.customerCare));
+    if (target.dataset.careLogDelete !== undefined) { if (!confirm('Xóa lịch sử chăm sóc này?')) return; await window.crm.deleteCareLog(Number(target.dataset.careLogDelete)); toast('Đã xóa lịch sử.'); return showCustomerCare(Number(target.dataset.customerId)); }
+    if (target.id === 'new-sales-task') return showSalesTaskForm();
+    if (target.dataset.salesTaskEdit !== undefined) return showSalesTaskForm(Number(target.dataset.salesTaskEdit));
+    if (target.dataset.salesTaskDelete !== undefined) { if (!confirm('Xóa công việc này?')) return; await window.crm.deleteSalesTask(Number(target.dataset.salesTaskDelete)); toast('Đã xóa công việc.'); return navigate('sales-tasks'); }
+    if (target.id === 'new-opportunity') return showOpportunityForm();
+    if (target.dataset.opportunityEdit !== undefined) return showOpportunityForm(Number(target.dataset.opportunityEdit));
+    if (target.dataset.opportunityDelete !== undefined) { if (!confirm('Xóa cơ hội bán hàng này?')) return; await window.crm.deleteOpportunity(Number(target.dataset.opportunityDelete)); toast('Đã xóa cơ hội.'); return navigate('opportunities'); }
+    if (target.id === 'new-quote-request') return showQuoteRequestForm();
+    if (target.dataset.quoteRequestEdit !== undefined) return showQuoteRequestForm(Number(target.dataset.quoteRequestEdit));
+    if (target.dataset.quoteRequestDelete !== undefined) { if (!confirm('Xóa yêu cầu báo giá này?')) return; await window.crm.deleteQuoteRequest(Number(target.dataset.quoteRequestDelete)); toast('Đã xóa yêu cầu.'); return navigate('quote-requests'); }
+    if (target.id === 'new-sales-kpi') return showSalesKpiForm();
+    if (target.dataset.salesKpiEdit !== undefined) return showSalesKpiForm(Number(target.dataset.salesKpiEdit));
+    if (target.dataset.salesKpiDelete !== undefined) { if (!confirm('Xóa KPI này?')) return; await window.crm.deleteSalesKpi(Number(target.dataset.salesKpiDelete)); toast('Đã xóa KPI.'); return navigate('sales-kpis'); }
     if (target.id === 'new-quote') return showQuoteForm();
-    if (target.dataset.invoiceFilter) { state.quoteInvoiceFilter = target.dataset.invoiceFilter; return renderQuotes(); }
+    if (target.dataset.invoiceFilter) { state.quoteInvoiceFilter = target.dataset.invoiceFilter; return navigate('quotes'); }
     if (target.dataset.quoteInvoice !== undefined) return showQuoteInvoiceForm(Number(target.dataset.id));
     if (target.dataset.quoteDetail !== undefined) return showQuoteForm(Number(target.dataset.id));
     if (target.dataset.quoteCustomerEdit !== undefined) {
@@ -585,6 +716,14 @@ document.addEventListener('change', event => {
       updateQuoteLine(line);
     }
   }
+  if (event.target.name === 'paintProductId' && event.target.closest('.quote-line')) {
+    const product = state.bootstrap.products.find(item => item.id === Number(event.target.value));
+    const line = event.target.closest('.quote-line');
+    if (product && !$('[name="paintMaterialPricePerKg"]', line).value) {
+      $('[name="paintMaterialPricePerKg"]', line).value = moneyInput(product.purchase_price);
+      updateQuoteLine(line);
+    }
+  }
   if (event.target.name === 'productId' && event.target.closest('.po-line')) {
     const product = state.bootstrap.products.find(item => item.id === Number(event.target.value));
     if (product) { $('[name="unitPrice"]', event.target.closest('.po-line')).value = moneyInput(product.purchase_price); $('[name="vatPercent"]', event.target.closest('.po-line')).value = product.vat_rate; }
@@ -606,7 +745,9 @@ document.addEventListener('submit', async event => {
     }
     if (form.id === 'quote-form') {
       const head = Object.fromEntries(new FormData(form));
-      const payload = { date: head.date, customerId: Number(head.customerId), warehouseId: Number(head.warehouseId), quoteType: head.quoteType, notes: head.notes, items: $$('.quote-line', form).map(lineData) };
+      const payload = { date: head.date, customerId: Number(head.customerId), warehouseId: Number(head.warehouseId), quoteType: head.quoteType,
+        assignedEmployeeId: Number(head.assignedEmployeeId) || null, shippingCost: number(head.shippingCost), shippingVatPercent: number(head.shippingVatPercent),
+        shippingInfo: head.shippingInfo, notes: head.notes, items: $$('.quote-line', form).map(lineData) };
       const result = form.dataset.id ? await window.crm.updateQuote(Number(form.dataset.id), payload) : await window.crm.createQuote(payload);
       closeModal(); toast(form.dataset.id ? `Đã cập nhật ${result.number}.` : `Đã tạo báo giá ${result.number}.`); return navigate('quotes');
     }
@@ -614,6 +755,26 @@ document.addEventListener('submit', async event => {
       const fields = Object.fromEntries(new FormData(form));
       const result = await window.crm.setQuoteInvoice(Number(form.dataset.id), { status: fields.status, invoiceDate: fields.invoiceDate, notes: fields.notes });
       closeModal(); toast(result.invoice_status === 'ISSUED' ? `Đã ghi nhận hóa đơn ${result.invoice_number}.` : 'Đã cập nhật trạng thái hóa đơn.'); return navigate('quotes');
+    }
+    if (form.id === 'care-log-form') {
+      const fields = Object.fromEntries(new FormData(form)); const customerId = Number(form.dataset.customerId);
+      await window.crm.saveCareLog(null, { ...fields, customerId, employeeId: Number(fields.employeeId) || null }); toast('Đã lưu lịch sử chăm sóc.'); return showCustomerCare(customerId);
+    }
+    if (form.id === 'sales-task-form') {
+      const fields = Object.fromEntries(new FormData(form));
+      await window.crm.saveSalesTask(Number(form.dataset.id) || null, { ...fields, customerId: Number(fields.customerId) || null, employeeId: Number(fields.employeeId) || null }); closeModal(); toast('Đã lưu công việc.'); return navigate('sales-tasks');
+    }
+    if (form.id === 'opportunity-form') {
+      const fields = Object.fromEntries(new FormData(form));
+      await window.crm.saveOpportunity(Number(form.dataset.id) || null, { ...fields, customerId: Number(fields.customerId), employeeId: Number(fields.employeeId) || null, quoteId: Number(fields.quoteId) || null, expectedValue: number(fields.expectedValue) }); closeModal(); toast('Đã lưu cơ hội bán hàng.'); return navigate('opportunities');
+    }
+    if (form.id === 'quote-request-form') {
+      const fields = Object.fromEntries(new FormData(form));
+      await window.crm.saveQuoteRequest(Number(form.dataset.id) || null, { ...fields, customerId: Number(fields.customerId), employeeId: Number(fields.employeeId) || null, quantity: Number(fields.quantity) || 0 }); closeModal(); toast('Đã lưu yêu cầu báo giá.'); return navigate('quote-requests');
+    }
+    if (form.id === 'sales-kpi-form') {
+      const fields = Object.fromEntries(new FormData(form));
+      await window.crm.saveSalesKpi(Number(form.dataset.id) || null, { ...fields, employeeId: Number(fields.employeeId), targetCustomers: Number(fields.targetCustomers) || 0, targetCalls: Number(fields.targetCalls) || 0, targetMeetings: Number(fields.targetMeetings) || 0, targetRevenue: number(fields.targetRevenue), bonusPercent: Number(fields.bonusPercent) || 0 }); closeModal(); toast('Đã lưu KPI.'); return navigate('sales-kpis');
     }
     if (form.id === 'po-form') {
       const data = new FormData(form);

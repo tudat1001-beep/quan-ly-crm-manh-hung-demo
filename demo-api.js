@@ -14,36 +14,41 @@
     const totalWeight = weightEach * quantity;
     const materialCost = totalWeight * n(input.materialPricePerKg);
     const laborCost = n(input.laborHours) * n(input.laborRatePerHour) * Math.max(1, n(input.workerCount));
+    const paintLaborCost = n(input.paintLaborHours) * n(input.laborRatePerHour) * Math.max(1, n(input.workerCount));
     const consumablesCost = n(input.consumablesPerItem) * quantity;
     const electricityCost = n(input.electricityKwh) * n(input.electricityRate);
     const depreciationCost = n(input.depreciationPerHour) * n(input.laborHours);
     const coatingArea = areaEach * Math.max(1, n(input.coatingSides)) * quantity;
+    const paintWeight = coatingArea * n(input.powderNormKgM2);
+    const paintMaterialCost = paintWeight * n(input.paintMaterialPricePerKg);
     const coatingCost = coatingArea * n(input.coatingPricePerM2);
     const wasteCost = (materialCost + coatingCost) * n(input.wastePercent) / 100;
-    const costBeforeProfit = materialCost + laborCost + consumablesCost + electricityCost + depreciationCost + coatingCost + wasteCost;
+    const costBeforeProfit = materialCost + paintMaterialCost + laborCost + paintLaborCost + consumablesCost + electricityCost + depreciationCost + coatingCost + wasteCost;
     const profit = costBeforeProfit * n(input.profitPercent) / 100;
     const priceBeforeVat = costBeforeProfit + profit;
+    const customerDiscount = priceBeforeVat * Math.min(20, Math.max(0, n(input.customerDiscountPercent))) / 100;
     const vat = priceBeforeVat * n(input.vatPercent) / 100;
     const round = value => Math.round(value + Number.EPSILON);
-    return { areaEach, weightEach, totalWeight, materialCost: round(materialCost), laborCost: round(laborCost), consumablesCost: round(consumablesCost),
+    return { areaEach, weightEach, totalWeight, coatingArea, paintWeight, materialCost: round(materialCost), paintMaterialCost: round(paintMaterialCost), laborCost: round(laborCost), paintLaborCost: round(paintLaborCost), consumablesCost: round(consumablesCost),
       electricityCost: round(electricityCost), depreciationCost: round(depreciationCost), coatingCost: round(coatingCost), wasteCost: round(wasteCost),
-      costBeforeProfit: round(costBeforeProfit), profit: round(profit), priceBeforeVat: round(priceBeforeVat), vat: round(vat), total: round(priceBeforeVat + vat) };
+      costBeforeProfit: round(costBeforeProfit), profit: round(profit), priceBeforeVat: round(priceBeforeVat), customerDiscount: round(customerDiscount), vat: round(vat), total: round(priceBeforeVat + vat) };
   }
 
   function quoteItem(quoteId, input, id) {
     const calc = calculateCost(input);
-    return { id, quote_id: quoteId, product_id: Number(input.productId) || null, description: input.description, unit: input.unit || 'cái', quantity: n(input.quantity),
-      stock_quantity: n(input.stockQuantity), length_mm: n(input.lengthMm), width_mm: n(input.widthMm), thickness_mm: n(input.thicknessMm), density: n(input.density) || 7.85,
-      material_price_per_kg: n(input.materialPricePerKg), labor_hours: n(input.laborHours), labor_rate_per_hour: n(input.laborRatePerHour), worker_count: n(input.workerCount) || 1,
+    if (n(input.customerDiscountPercent) < 0 || n(input.customerDiscountPercent) > 20) throw new Error('Chiết khấu khách hàng phải từ 0 đến 20%.');
+    return { id, quote_id: quoteId, product_id: Number(input.productId) || null, paint_product_id: Number(input.paintProductId) || null, description: input.description, unit: input.unit || 'cái', quantity: n(input.quantity),
+      stock_quantity: calc.totalWeight || n(input.stockQuantity), paint_weight: calc.paintWeight, length_mm: n(input.lengthMm), width_mm: n(input.widthMm), thickness_mm: n(input.thicknessMm), density: n(input.density) || 7.85,
+      material_price_per_kg: n(input.materialPricePerKg), paint_material_price_per_kg: n(input.paintMaterialPricePerKg), labor_hours: n(input.laborHours), paint_labor_hours: n(input.paintLaborHours), powder_norm_kg_m2: n(input.powderNormKgM2), labor_rate_per_hour: n(input.laborRatePerHour), worker_count: n(input.workerCount) || 1,
       consumables_per_item: n(input.consumablesPerItem), electricity_kwh: n(input.electricityKwh), electricity_rate: n(input.electricityRate), depreciation_per_hour: n(input.depreciationPerHour),
       coating_sides: n(input.coatingSides) || 1, coating_price_per_m2: n(input.coatingPricePerM2), waste_percent: n(input.wastePercent), profit_percent: n(input.profitPercent),
-      vat_percent: n(input.vatPercent), cost_before_profit: calc.costBeforeProfit, price_before_vat: calc.priceBeforeVat, vat_amount: calc.vat, line_total: calc.total, formula_json: '{}' };
+      customer_discount_percent: n(input.customerDiscountPercent), customer_discount_amount: calc.customerDiscount, vat_percent: n(input.vatPercent), cost_before_profit: calc.costBeforeProfit, price_before_vat: calc.priceBeforeVat, vat_amount: calc.vat, line_total: calc.total, formula_json: '{}' };
   }
 
   function makeDb() {
     const db = {
       settings: { company_name: 'CÔNG TY TNHH SẢN XUẤT TM-DV MẠNH HÙNG', company_address: 'TP.HCM', company_phone: '0901 234 567', tax_code: '0312345678', invoice_prefix: 'HD', invoice_start: '1', banner_data: 'logo.jpg' },
-      customers: [{ id: 1, code: 'DEMO-KH01', name: 'Công ty Nội thất An Phát', phone: '0901 234 567', address: '125 Nguyễn Văn Linh, Quận 7, TP.HCM', tax_code: '0312345678', active: 1 }],
+      customers: [{ id: 1, code: 'DEMO-KH01', name: 'Công ty Nội thất An Phát', phone: '0901 234 567', address: '125 Nguyễn Văn Linh, Quận 7, TP.HCM', tax_code: '0312345678', industrial_zone: 'KCN Tân Tạo', contact_name: 'Trần Thanh An', contact_position: 'Trưởng phòng mua hàng', contact_phone: '0909 111 222', industry: 'Nội thất kim loại', interested_services: 'Gia công, sơn tĩnh điện', assigned_employee_id: 1, active: 1 }],
       suppliers: [{ id: 1, code: 'DEMO-NCC01', name: 'Công ty Thép Việt', phone: '028 3822 6688', address: 'KCN Sóng Thần, Bình Dương', tax_code: '3700123456', active: 1 }],
       products: [{ id: 1, code: 'DEMO-INOX304', name: 'Tấm inox 304 dày 1mm', unit: 'kg', purchase_price: 45000, sale_price: 65000, vat_rate: 10, active: 1 },
         { id: 2, code: 'DEMO-SON01', name: 'Sơn tĩnh điện', unit: 'kg', purchase_price: 85000, sale_price: 110000, vat_rate: 10, active: 1 }],
@@ -56,18 +61,19 @@
         { id: 4, code: 'TAMUNG', name: 'Tạm ứng', transaction_type: 'PAYMENT', affects_profit: 0, active: 1 },
         { id: 5, code: 'HOANUNG', name: 'Thanh toán / hoàn ứng', transaction_type: 'PAYMENT', affects_profit: 1, active: 1 }],
       quotes: [], sales: [], purchase_orders: [], purchase_requests: [], invoice_files: [], print_templates: [], stock_documents: [], cash_transactions: [], movements: [],
+      customer_care_logs: [], sales_tasks: [], opportunities: [], quote_requests: [], sales_kpis: [],
       counters: { quote: 1, sale: 0, po: 1, request: 1, receipt: 0, stock: 1, cash: 1 }
     };
-    const input = { productId: 1, description: 'Bàn inox gia công 1200 x 600', unit: 'cái', quantity: 2, stockQuantity: 18, lengthMm: 1200, widthMm: 600,
-      thicknessMm: 1, density: 7.85, materialPricePerKg: 45000, laborHours: 3, laborRatePerHour: 80000, workerCount: 2, consumablesPerItem: 50000,
-      electricityKwh: 8, electricityRate: 3500, depreciationPerHour: 25000, coatingSides: 1, coatingPricePerM2: 90000, wastePercent: 5, profitPercent: 20, vatPercent: 10 };
-    db.quotes.push({ id: 1, number: 'BG2026-0001', quote_date: date(), customer_id: 1, warehouse_id: 1, quote_type: 'FULL_SERVICE', status: 'SENT', invoice_status: 'PENDING', invoice_number: '', invoice_date: '', invoice_notes: '', notes: 'DEMO: Báo giá mẫu đầy đủ', items: [quoteItem(1, input, 1)] });
+    const input = { productId: 1, paintProductId: 2, description: 'Bàn inox gia công 1200 x 600', unit: 'cái', quantity: 2, lengthMm: 1200, widthMm: 600,
+      thicknessMm: 1, density: 7.85, materialPricePerKg: 45000, paintMaterialPricePerKg: 85000, laborHours: 3, paintLaborHours: 2, powderNormKgM2: 0.18, laborRatePerHour: 80000, workerCount: 2, consumablesPerItem: 50000,
+      electricityKwh: 8, electricityRate: 3500, depreciationPerHour: 25000, coatingSides: 2, coatingPricePerM2: 90000, wastePercent: 5, profitPercent: 20, customerDiscountPercent: 5, vatPercent: 10 };
+    db.quotes.push({ id: 1, number: 'BG2026-0001', quote_date: date(), customer_id: 1, warehouse_id: 1, assigned_employee_id: 1, quote_type: 'FULL_SERVICE', shipping_cost: 150000, shipping_vat_percent: 10, shipping_info: 'Giao tại xưởng khách hàng', status: 'SENT', invoice_status: 'PENDING', invoice_number: '', invoice_date: '', invoice_notes: '', notes: 'DEMO: Báo giá mẫu đầy đủ', items: [quoteItem(1, input, 1)] });
     db.purchase_orders.push({ id: 1, number: 'PO2026-0001', order_date: date(), supplier_id: 1, warehouse_id: 1, status: 'DRAFT', notes: 'DEMO: Đơn mua mẫu',
       project: 'Xưởng sản xuất', delivery_date: date(), delivery_location: 'Kho chính', payment_terms: 'Chuyển khoản sau khi nhận hàng', quality_requirements: 'Hàng đúng quy cách', warranty: '', documents_required: 'Hóa đơn GTGT, phiếu giao hàng', shipping_cost: 0,
       items: [{ id: 1, product_id: 2, quantity: 20, unit_price: 85000, vat_percent: 10, received_quantity: 0 }] });
     db.purchase_requests.push({ id: 1, number: 'DN2026-0001', request_date: date(), employee_id: 1, requester_name: '', department: 'Sản xuất', project: 'Đơn hàng DEMO', purpose: 'Mua vật tư sản xuất', needed_date: date(), proposed_supplier: 'Công ty Thép Việt', technical_requirements: 'Đúng quy cách', reason: 'Bổ sung tồn kho', notes: 'Có báo giá kèm theo', status: 'DRAFT', items: [{ id: 1, item_name: 'Tấm inox 304', specification: 'Dày 1mm', unit: 'kg', quantity: 50, estimated_unit_price: 45000, notes: '' }] });
     db.invoice_files.push({ id: 1, invoice_type: 'INPUT', invoice_month: date().slice(0, 7), invoice_number: 'DEMO-HĐ01', partner_name: 'Công ty Thép Việt', notes: 'File minh họa trong demo', file_path: 'demo://hoa-don.pdf', original_name: 'Hoa-don-demo.pdf' });
-    const types = { QUOTE_FULL: 'Báo giá cung cấp vật tư và gia công', QUOTE_PROCESSING: 'Báo giá gia công vật tư khách cung cấp', SALE: 'Phiếu xuất bán', PURCHASE_ORDER: 'Đơn đặt hàng', PURCHASE_REQUEST: 'Phiếu đề nghị mua vật tư, thiết bị', ADVANCE_REQUEST: 'Giấy đề nghị tạm ứng', ADVANCE_SETTLEMENT: 'Giấy thanh toán / hoàn ứng' };
+    const types = { QUOTE_FULL: 'Báo giá cung cấp vật tư, gia công và sơn', QUOTE_PROCESSING: 'Báo giá gia công và sơn', QUOTE_PAINT: 'Báo giá sơn tĩnh điện', SALE: 'Phiếu xuất bán', PURCHASE_ORDER: 'Đơn đặt hàng', PURCHASE_REQUEST: 'Phiếu đề nghị mua vật tư, thiết bị', ADVANCE_REQUEST: 'Giấy đề nghị tạm ứng', ADVANCE_SETTLEMENT: 'Giấy thanh toán / hoàn ứng' };
     db.print_template_types = types;
     Object.keys(types).forEach((type, index) => db.print_templates.push({ id: index + 1, name: types[type], document_type: type, content: '<div class="brand-images">{{banner}}{{watermark}}</div><h1>{{title}}</h1><div class="meta">Số: {{number}} · Ngày: {{date}}</div>{{items_table}}<div class="totals"><div class="grand">TỔNG CỘNG: {{total}} đồng</div></div><div class="notes">{{notes}}</div>', layout_json: '', is_default: 1 }));
     db.stock_documents.push({ id: 1, number: 'NH2026-0001', document_date: date(), type: 'DIRECT_RECEIPT', warehouse_from_id: null, warehouse_to_id: 1,
@@ -77,6 +83,11 @@
       { id: 2, movement_date: date(), warehouse_id: 1, product_id: 2, quantity: 50, unit_cost: 85000, source_type: 'DIRECT_RECEIPT', source_id: 1, note: 'NH2026-0001' });
     db.cash_transactions.push({ id: 1, number: 'PT2026-0001', transaction_date: date(), type: 'OTHER_RECEIPT', account_id: 1, target_account_id: null, customer_id: null,
       supplier_id: null, employee_id: null, category_id: 1, amount: 2000000, reference: 'DEMO-THU01', notes: 'Khoản thu mẫu' });
+    db.customer_care_logs.push({ id: 1, customer_id: 1, employee_id: 1, care_date: date(), care_type: 'CALL', content: 'Đã gọi xác nhận nhu cầu sơn tĩnh điện', next_action_date: date() });
+    db.sales_tasks.push({ id: 1, title: 'Gọi lại chốt quy cách', customer_id: 1, employee_id: 1, task_type: 'CALL', due_date: date(), status: 'TODO', notes: 'Khách đang chờ báo giá' });
+    db.opportunities.push({ id: 1, code: 'CH2026-0001', customer_id: 1, employee_id: 1, quote_id: 1, stage: 'QUOTED', service: 'Gia công và sơn tĩnh điện', expected_value: 25000000, expected_close_date: date(), notes: '' });
+    db.quote_requests.push({ id: 1, number: 'RFQ2026-0001', request_date: date(), customer_id: 1, employee_id: 1, contact_name: 'Trần Thanh An', drawing_reference: 'BV-DEMO-01', specification: 'Theo bản vẽ khách gửi', material: 'Inox 304', quantity: 20, status: 'QUOTED', notes: '' });
+    db.sales_kpis.push({ id: 1, employee_id: 1, period: date().slice(0, 7), target_customers: 10, target_calls: 30, target_meetings: 8, target_revenue: 200000000, bonus_percent: 2, notes: 'KPI demo' });
     return db;
   }
 
@@ -95,19 +106,19 @@
   }
 
   function listQuotes() {
-    return db.quotes.map(row => ({ ...copy(row), customer_name: find('customers', row.customer_id)?.name, warehouse_name: find('warehouses', row.warehouse_id)?.name, total: total(row.items) })).sort((a, b) => b.id - a.id);
+    return db.quotes.map(row => ({ ...copy(row), customer_name: find('customers', row.customer_id)?.name, warehouse_name: find('warehouses', row.warehouse_id)?.name, employee_name: find('employees', row.assigned_employee_id)?.name, total: total(row.items) + n(row.shipping_cost) * (1 + n(row.shipping_vat_percent) / 100) })).sort((a, b) => b.id - a.id);
   }
   function getQuote(id) {
     const row = db.quotes.find(item => item.id === Number(id)); if (!row) throw new Error('Không tìm thấy báo giá.');
     const customer = find('customers', row.customer_id); return { ...copy(row), customer_name: customer.name, customer_phone: customer.phone, customer_address: customer.address,
-      customer_tax_code: customer.tax_code, warehouse_name: find('warehouses', row.warehouse_id).name, total: total(row.items) };
+      customer_tax_code: customer.tax_code, warehouse_name: find('warehouses', row.warehouse_id).name, employee_name: find('employees', row.assigned_employee_id)?.name, total: total(row.items) + n(row.shipping_cost) * (1 + n(row.shipping_vat_percent) / 100) };
   }
   function saveQuote(payload, id) {
     if (!payload.customerId || !payload.warehouseId || !payload.items?.length) throw new Error('Báo giá chưa đủ thông tin.');
     let row = id ? db.quotes.find(item => item.id === Number(id)) : null;
     if (row?.status === 'CONVERTED') throw new Error('Báo giá đã xuất bán nên không thể sửa.');
     if (!row) { const newId = nextId(db.quotes); row = { id: newId, number: numberFor('quote', 'BG'), status: 'DRAFT', invoice_status: 'PENDING', invoice_number: '', invoice_date: '', invoice_notes: '' }; db.quotes.push(row); }
-    Object.assign(row, { quote_date: payload.date, customer_id: Number(payload.customerId), warehouse_id: Number(payload.warehouseId), quote_type: payload.quoteType || 'FULL_SERVICE', notes: payload.notes || '' });
+    Object.assign(row, { quote_date: payload.date, customer_id: Number(payload.customerId), warehouse_id: Number(payload.warehouseId), assigned_employee_id: Number(payload.assignedEmployeeId) || null, quote_type: payload.quoteType || 'FULL_SERVICE', shipping_cost: n(payload.shippingCost), shipping_vat_percent: n(payload.shippingVatPercent), shipping_info: payload.shippingInfo || '', notes: payload.notes || '' });
     row.items = payload.items.map((item, index) => quoteItem(row.id, item, index + 1)); return { id: row.id, number: row.number };
   }
 
@@ -223,34 +234,55 @@
     const sourceItems = doc.items || [{ description: doc.notes || doc.reference, quantity: 1, line_total: doc.amount }];
     const rows = sourceItems.map((item, index) => `<tr><td>${index + 1}</td><td class="left">${htmlEscape(item.description || item.product_name || item.item_name)}</td><td>${htmlEscape(item.unit || '')}</td><td>${n(item.quantity) || 1}</td><td>${formatMoney(item.line_total || item.quantity * (item.unit_price || item.estimated_unit_price) || doc.amount)}</td></tr>`).join('');
     const itemsTable = `<table><thead><tr><th>STT</th><th>Nội dung</th><th>ĐVT</th><th>SL</th><th>Thành tiền</th></tr></thead><tbody>${rows}</tbody></table>`;
-    const documentType = type === 'quote' ? (doc.quote_type === 'CUSTOMER_MATERIAL' ? 'QUOTE_PROCESSING' : 'QUOTE_FULL') : type === 'sale' ? 'SALE' : type === 'po' ? 'PURCHASE_ORDER' : type === 'purchase_request' ? 'PURCHASE_REQUEST' : doc.type === 'ADVANCE' ? 'ADVANCE_REQUEST' : 'ADVANCE_SETTLEMENT';
+    const documentType = type === 'quote' ? (doc.quote_type === 'PAINT_ONLY' ? 'QUOTE_PAINT' : doc.quote_type === 'CUSTOMER_MATERIAL' ? 'QUOTE_PROCESSING' : 'QUOTE_FULL') : type === 'sale' ? 'SALE' : type === 'po' ? 'PURCHASE_ORDER' : type === 'purchase_request' ? 'PURCHASE_REQUEST' : doc.type === 'ADVANCE' ? 'ADVANCE_REQUEST' : 'ADVANCE_SETTLEMENT';
     const template = db.print_templates.find(row => row.document_type === documentType && row.is_default) || db.print_templates.find(row => row.document_type === documentType);
-    const titles = { QUOTE_FULL: 'BÁO GIÁ', QUOTE_PROCESSING: 'BÁO GIÁ GIA CÔNG', SALE: 'PHIẾU XUẤT BÁN', PURCHASE_ORDER: 'ĐƠN ĐẶT HÀNG', PURCHASE_REQUEST: 'PHIẾU ĐỀ NGHỊ MUA VẬT TƯ, THIẾT BỊ', ADVANCE_REQUEST: 'GIẤY ĐỀ NGHỊ TẠM ỨNG', ADVANCE_SETTLEMENT: 'GIẤY THANH TOÁN TIỀN TẠM ỨNG' };
+    const titles = { QUOTE_FULL: 'BÁO GIÁ', QUOTE_PROCESSING: 'BÁO GIÁ GIA CÔNG', QUOTE_PAINT: 'BÁO GIÁ SƠN TĨNH ĐIỆN', SALE: 'PHIẾU XUẤT BÁN', PURCHASE_ORDER: 'ĐƠN ĐẶT HÀNG', PURCHASE_REQUEST: 'PHIẾU ĐỀ NGHỊ MUA VẬT TƯ, THIẾT BỊ', ADVANCE_REQUEST: 'GIẤY ĐỀ NGHỊ TẠM ỨNG', ADVANCE_SETTLEMENT: 'GIẤY THANH TOÁN TIỀN TẠM ỨNG' };
     const sum = sourceItems.reduce((value, item) => value + n(item.line_total || item.quantity * (item.unit_price || item.estimated_unit_price)), 0) || n(doc.amount);
     const raw = { banner: `<img class="banner" src="${htmlEscape(db.settings.banner_data || 'logo.jpg')}" alt="Banner">`, watermark: '', company_name: db.settings.company_name, company_address: db.settings.company_address, company_phone: db.settings.company_phone, company_tax_code: db.settings.tax_code,
       title: titles[documentType], number: doc.number, date: doc.quote_date || doc.sale_date || doc.order_date || doc.request_date || doc.transaction_date, partner_label: type === 'po' ? 'Nhà cung cấp' : 'Khách hàng', partner_name: doc.customer_name || doc.supplier_name || doc.employee_name || doc.requester_name,
       partner_address: doc.customer_address || doc.supplier_address, partner_phone: doc.customer_phone || doc.supplier_phone, partner_tax_code: doc.customer_tax_code || doc.supplier_tax_code, warehouse: doc.warehouse_name, items_table: itemsTable,
       subtotal: formatMoney(sum), vat_total: formatMoney(0), total: formatMoney(doc.total || doc.amount || sum), total_words: '', notes: doc.notes, employee_name: doc.employee_name || doc.requester_name, department: doc.department, purpose: doc.purpose || doc.notes, reference: doc.reference,
       needed_date: doc.needed_date, project: doc.project, proposed_supplier: doc.proposed_supplier, technical_requirements: doc.technical_requirements, reason: doc.reason, delivery_date: doc.delivery_date, delivery_location: doc.delivery_location, payment_terms: doc.payment_terms,
-      quality_requirements: doc.quality_requirements, warranty: doc.warranty, documents_required: doc.documents_required, shipping_cost: formatMoney(doc.shipping_cost), use_from_date: doc.use_from_date, use_to_date: doc.use_to_date, due_date: doc.due_date, payment_method: doc.payment_method,
+      quality_requirements: doc.quality_requirements, warranty: doc.warranty, documents_required: doc.documents_required, shipping_cost: formatMoney(doc.shipping_cost), shipping_vat_amount: formatMoney(n(doc.shipping_cost) * n(doc.shipping_vat_percent) / 100), shipping_info: doc.shipping_info, use_from_date: doc.use_from_date, use_to_date: doc.use_to_date, due_date: doc.due_date, payment_method: doc.payment_method,
       bank_name: doc.bank_name, bank_account: doc.bank_account, document_count: doc.document_count, advance_balance_before: formatMoney(doc.advance_balance_before), settlement_difference: formatMoney(doc.settlement_difference) };
     const variables = Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, ['banner', 'watermark', 'items_table'].includes(key) ? String(value || '') : htmlEscape(value)]));
     const body = sanitizeTemplate(template?.content || '<h1>{{title}}</h1>{{items_table}}').replace(/\{\{([a-z_]+)\}\}/g, (_match, key) => variables[key] ?? '');
     popup.document.write(`<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>${htmlEscape(doc.number)}</title><style>@page{size:A5 portrait;margin:7mm}body{font:10px Arial;color:#17202a}.banner{display:block;width:100%;height:auto;object-fit:contain}h1{text-align:center;font-weight:700;color:#9c1d23}table{width:100%;border-collapse:collapse;font-size:8px}th,td{padding:3px;border:1px solid #555;text-align:center}.left{text-align:left}.totals{margin:8px 0 0 auto;width:62%}.grand{font-weight:700}.signatures{display:flex;justify-content:space-between;text-align:center;margin-top:24px}.signatures div{flex:1}.signatures small{display:block}</style></head><body>${body}<script>window.print()<\/script></body></html>`); popup.document.close(); return true;
   }
 
+  const careLogs = customerId => db.customer_care_logs.filter(row => !customerId || row.customer_id === Number(customerId)).map(row => ({ ...copy(row), customer_name: find('customers', row.customer_id)?.name, employee_name: find('employees', row.employee_id)?.name })).sort((a, b) => b.id - a.id);
+  const salesTasks = () => db.sales_tasks.map(row => ({ ...copy(row), customer_name: find('customers', row.customer_id)?.name, employee_name: find('employees', row.employee_id)?.name })).sort((a, b) => a.status.localeCompare(b.status) || a.due_date.localeCompare(b.due_date));
+  const opportunities = () => db.opportunities.map(row => ({ ...copy(row), customer_name: find('customers', row.customer_id)?.name, employee_name: find('employees', row.employee_id)?.name, quote_number: db.quotes.find(quote => quote.id === row.quote_id)?.number })).sort((a, b) => b.id - a.id);
+  const quoteRequests = () => db.quote_requests.map(row => ({ ...copy(row), customer_name: find('customers', row.customer_id)?.name, employee_name: find('employees', row.employee_id)?.name })).sort((a, b) => b.id - a.id);
+  const salesKpis = () => db.sales_kpis.map(row => ({ ...copy(row), employee_name: find('employees', row.employee_id)?.name })).sort((a, b) => b.period.localeCompare(a.period));
+  const upsert = (rows, id, values) => { let row = id ? rows.find(item => item.id === Number(id)) : null; if (!row) { row = { id: nextId(rows) }; rows.push(row); } Object.assign(row, values); return row.id; };
+
+  function salesDashboard() {
+    const month = date().slice(0, 7);
+    const open = db.opportunities.filter(row => !['WON', 'LOST'].includes(row.stage));
+    const kpis = salesKpis().filter(row => row.period === month).map(row => ({ ...row,
+      actual_customers: db.customers.filter(customer => customer.assigned_employee_id === row.employee_id).length,
+      actual_calls: db.customer_care_logs.filter(log => log.employee_id === row.employee_id && log.care_type === 'CALL' && log.care_date.startsWith(month)).length,
+      actual_meetings: db.customer_care_logs.filter(log => log.employee_id === row.employee_id && log.care_type === 'MEETING' && log.care_date.startsWith(month)).length,
+      actual_revenue: db.sales.filter(sale => db.quotes.find(quote => quote.id === sale.quote_id)?.assigned_employee_id === row.employee_id && sale.sale_date.startsWith(month)).reduce((sum, sale) => sum + n(sale.total), 0) }));
+    return { customers: active('customers').length, dueTasks: db.sales_tasks.filter(row => row.status !== 'DONE').length, openOpportunities: open.length,
+      pipelineValue: open.reduce((sum, row) => sum + n(row.expected_value), 0), pendingQuotes: db.quotes.filter(row => row.status === 'SENT').length,
+      kpis, tasks: salesTasks().filter(row => row.status !== 'DONE').slice(0, 10) };
+  }
+
   window.crm = {
     bootstrap: async () => copy(bootstrap()), calculateCost: async input => calculateCost(input),
     listMaster: async type => { if (!masterTypes.includes(type)) throw new Error('Danh mục không hợp lệ.'); return copy(active(type).sort((a, b) => a.name.localeCompare(b.name))); },
     saveMaster: async (type, record) => { if (!masterTypes.includes(type) || !record.code?.trim() || !record.name?.trim()) throw new Error('Mã và tên không được để trống.'); let row = record.id ? find(type, record.id) : null;
-      if (!row) { row = { id: nextId(db[type]), active: 1 }; db[type].push(row); } Object.assign(row, copy(record)); for (const key of ['purchase_price', 'sale_price', 'vat_rate', 'opening_balance', 'affects_profit']) if (key in row) row[key] = n(row[key]); return row.id; },
+      if (!row) { row = { id: nextId(db[type]), active: 1 }; db[type].push(row); } Object.assign(row, copy(record)); for (const key of ['purchase_price', 'sale_price', 'vat_rate', 'opening_balance', 'affects_profit']) if (key in row) row[key] = n(row[key]); if ('assigned_employee_id' in row) row.assigned_employee_id = n(row.assigned_employee_id) || null; return row.id; },
     deleteMaster: async (type, id) => { if (masterUsed(type, id)) throw new Error('Dữ liệu đã được dùng trong chứng từ nên không thể xóa.'); db[type] = db[type].filter(row => row.id !== Number(id)); },
     listQuotes: async () => copy(listQuotes()), getQuote: async id => copy(getQuote(id)), createQuote: async payload => saveQuote(payload), updateQuote: async (id, payload) => saveQuote(payload, id),
     setQuoteStatus: async (id, status) => { const row = db.quotes.find(item => item.id === Number(id)); if (!row || row.status === 'CONVERTED') throw new Error('Không thể đổi trạng thái.'); row.status = status; },
     setQuoteInvoice: async (id, payload) => setQuoteInvoice(id, payload),
-    convertQuote: async id => { const quote = getQuote(id); if (quote.status === 'CONVERTED') throw new Error('Báo giá đã được chuyển.'); for (const item of quote.items) if (item.product_id && balance(item.product_id, quote.warehouse_id) < item.stock_quantity) throw new Error(`Không đủ tồn kho cho ${item.description}.`);
+    convertQuote: async id => { const quote = getQuote(id); if (quote.status === 'CONVERTED') throw new Error('Báo giá đã được chuyển.'); const needs = new Map(); quote.items.forEach(item => { if (item.product_id) needs.set(item.product_id, (needs.get(item.product_id) || 0) + n(item.stock_quantity)); if (item.paint_product_id) needs.set(item.paint_product_id, (needs.get(item.paint_product_id) || 0) + n(item.paint_weight)); }); for (const [productId, quantity] of needs) if (balance(productId, quote.warehouse_id) < quantity) throw new Error(`Không đủ tồn kho cho ${find('products', productId)?.name}.`);
       const sale = { id: nextId(db.sales), number: numberFor('sale', 'BH'), sale_date: date(), quote_id: quote.id, customer_id: quote.customer_id, warehouse_id: quote.warehouse_id, total: quote.total, status: 'POSTED' }; db.sales.push(sale);
       quote.items.forEach(item => { if (item.product_id && item.stock_quantity > 0) db.movements.push({ id: nextId(db.movements), movement_date: date(), warehouse_id: quote.warehouse_id, product_id: item.product_id, quantity: -item.stock_quantity, unit_cost: item.cost_before_profit / Math.max(1, item.stock_quantity), source_type: 'SALE', source_id: sale.id, note: sale.number }); });
+      quote.items.forEach(item => { if (item.paint_product_id && item.paint_weight > 0) db.movements.push({ id: nextId(db.movements), movement_date: date(), warehouse_id: quote.warehouse_id, product_id: item.paint_product_id, quantity: -item.paint_weight, unit_cost: find('products', item.paint_product_id)?.purchase_price || 0, source_type: 'SALE', source_id: sale.id, note: sale.number }); });
       db.quotes.find(row => row.id === quote.id).status = 'CONVERTED'; return { id: sale.id, number: sale.number }; },
     deleteQuote: async id => { const row = db.quotes.find(item => item.id === Number(id)); if (row?.status === 'CONVERTED') throw new Error('Hãy xóa phiếu xuất trước.'); db.quotes = db.quotes.filter(item => item.id !== Number(id)); },
     listSales: async () => copy(db.sales.map(row => ({ ...row, customer_name: find('customers', row.customer_id)?.name, warehouse_name: find('warehouses', row.warehouse_id)?.name })).sort((a, b) => b.id - a.id)),
@@ -285,13 +317,30 @@
     listInvoiceFiles: async () => copy(db.invoice_files.sort((a, b) => b.id - a.id)), pickInvoiceFile: async () => ({ path: 'demo://Hoa-don-demo.pdf', name: 'Hoa-don-demo.pdf' }),
     saveInvoiceFile: async payload => { const row = { id: nextId(db.invoice_files), invoice_type: payload.invoiceType, invoice_month: payload.invoiceMonth, invoice_number: payload.invoiceNumber || '', partner_name: payload.partnerName || '', notes: payload.notes || '', file_path: payload.sourcePath, original_name: payload.originalName }; db.invoice_files.push(row); return { id: row.id }; },
     openInvoiceFile: async () => true, deleteInvoiceFile: async id => { db.invoice_files = db.invoice_files.filter(row => row.id !== Number(id)); },
-    listPrintTemplates: async () => ({ templates: copy(db.print_templates), types: copy(db.print_template_types), variables: ['banner','watermark','company_name','company_address','company_phone','company_tax_code','title','number','date','partner_label','partner_name','partner_address','partner_phone','partner_tax_code','warehouse','items_table','subtotal','vat_total','total','total_words','notes','employee_name','department','purpose','reference','needed_date','project','proposed_supplier','technical_requirements','reason','delivery_date','delivery_location','payment_terms','quality_requirements','warranty','documents_required','shipping_cost','use_from_date','use_to_date','due_date','payment_method','bank_name','bank_account','document_count','advance_balance_before','settlement_difference'] }),
+    listPrintTemplates: async () => ({ templates: copy(db.print_templates), types: copy(db.print_template_types), variables: ['banner','watermark','company_name','company_address','company_phone','company_tax_code','title','number','date','partner_label','partner_name','partner_address','partner_phone','partner_tax_code','warehouse','items_table','subtotal','vat_total','total','total_words','notes','employee_name','department','purpose','reference','needed_date','project','proposed_supplier','technical_requirements','reason','delivery_date','delivery_location','payment_terms','quality_requirements','warranty','documents_required','shipping_cost','shipping_vat_amount','shipping_info','use_from_date','use_to_date','due_date','payment_method','bank_name','bank_account','document_count','advance_balance_before','settlement_difference'] }),
     savePrintTemplate: async record => { let row = record.id ? db.print_templates.find(item => item.id === Number(record.id)) : null; if (!row) { row = { id: nextId(db.print_templates), is_default: 0 }; db.print_templates.push(row); } Object.assign(row, { name: record.name, document_type: record.documentType, content: record.content, layout_json: JSON.stringify(record.layout || {}) }); return row.id; },
     setDefaultPrintTemplate: async id => { const row = db.print_templates.find(item => item.id === Number(id)); if (!row) throw new Error('Không tìm thấy mẫu in.'); db.print_templates.filter(item => item.document_type === row.document_type).forEach(item => item.is_default = item.id === row.id ? 1 : 0); },
     deletePrintTemplate: async id => { const row = db.print_templates.find(item => item.id === Number(id)); if (row?.is_default) throw new Error('Không thể xóa mẫu mặc định.'); db.print_templates = db.print_templates.filter(item => item.id !== Number(id)); },
     getDebts: async () => ({ customers: copy(active('customers').map(customer => ({ id: customer.id, code: customer.code, name: customer.name, balance: db.sales.filter(row => row.customer_id === customer.id).reduce((sum, row) => sum + row.total, 0) + db.stock_documents.filter(row => row.customer_id === customer.id && row.type === 'DIRECT_SALE').reduce((sum, row) => sum + row.total, 0) - db.stock_documents.filter(row => row.customer_id === customer.id && row.type === 'CUSTOMER_RETURN').reduce((sum, row) => sum + row.total, 0) - db.cash_transactions.filter(row => row.customer_id === customer.id && row.type === 'CUSTOMER_RECEIPT').reduce((sum, row) => sum + row.amount, 0) }))),
       suppliers: copy(active('suppliers').map(supplier => ({ id: supplier.id, code: supplier.code, name: supplier.name, balance: db.purchase_orders.filter(row => row.supplier_id === supplier.id && row.status === 'RECEIVED').reduce((sum, row) => sum + total(row.items) + n(row.shipping_cost), 0) + db.stock_documents.filter(row => row.supplier_id === supplier.id && row.type === 'DIRECT_RECEIPT').reduce((sum, row) => sum + row.total, 0) - db.stock_documents.filter(row => row.supplier_id === supplier.id && row.type === 'SUPPLIER_RETURN').reduce((sum, row) => sum + row.total, 0) - db.cash_transactions.filter(row => row.supplier_id === supplier.id && row.type === 'SUPPLIER_PAYMENT').reduce((sum, row) => sum + row.amount, 0) }))) }),
-    getReports: async () => copy(reports()), saveSettings: async values => { Object.assign(db.settings, values); },
+    getReports: async () => copy(reports()),
+    getSalesDashboard: async () => copy(salesDashboard()),
+    listCareLogs: async customerId => copy(careLogs(customerId)),
+    saveCareLog: async (id, payload) => { if (!payload.customerId || !String(payload.content || '').trim()) throw new Error('Lịch sử chăm sóc cần khách hàng và nội dung.'); return upsert(db.customer_care_logs, id, { customer_id: Number(payload.customerId), employee_id: Number(payload.employeeId) || null, care_date: payload.careDate, care_type: payload.careType || 'CALL', content: String(payload.content).trim(), next_action_date: payload.nextActionDate || '' }); },
+    deleteCareLog: async id => { db.customer_care_logs = db.customer_care_logs.filter(row => row.id !== Number(id)); },
+    listSalesTasks: async () => copy(salesTasks()),
+    saveSalesTask: async (id, payload) => { if (!String(payload.title || '').trim() || !payload.dueDate) throw new Error('Công việc cần tiêu đề và hạn thực hiện.'); return upsert(db.sales_tasks, id, { title: String(payload.title).trim(), customer_id: Number(payload.customerId) || null, employee_id: Number(payload.employeeId) || null, task_type: payload.taskType || 'CALL', due_date: payload.dueDate, status: payload.status || 'TODO', notes: payload.notes || '' }); },
+    deleteSalesTask: async id => { db.sales_tasks = db.sales_tasks.filter(row => row.id !== Number(id)); },
+    listOpportunities: async () => copy(opportunities()),
+    saveOpportunity: async (id, payload) => { if (!payload.customerId) throw new Error('Cơ hội bán hàng cần khách hàng.'); const code = id ? db.opportunities.find(row => row.id === Number(id))?.code : `CH${new Date().getFullYear()}-${String(nextId(db.opportunities)).padStart(4, '0')}`; return upsert(db.opportunities, id, { code, customer_id: Number(payload.customerId), employee_id: Number(payload.employeeId) || null, quote_id: Number(payload.quoteId) || null, stage: payload.stage || 'APPROACH', service: payload.service || '', expected_value: n(payload.expectedValue), expected_close_date: payload.expectedCloseDate || '', notes: payload.notes || '' }); },
+    deleteOpportunity: async id => { db.opportunities = db.opportunities.filter(row => row.id !== Number(id)); },
+    listQuoteRequests: async () => copy(quoteRequests()),
+    saveQuoteRequest: async (id, payload) => { if (!payload.customerId || !payload.requestDate) throw new Error('Yêu cầu báo giá cần khách hàng và ngày tiếp nhận.'); const number = id ? db.quote_requests.find(row => row.id === Number(id))?.number : `RFQ${new Date().getFullYear()}-${String(nextId(db.quote_requests)).padStart(4, '0')}`; return upsert(db.quote_requests, id, { number, request_date: payload.requestDate, customer_id: Number(payload.customerId), employee_id: Number(payload.employeeId) || null, contact_name: payload.contactName || '', drawing_reference: payload.drawingReference || '', specification: payload.specification || '', material: payload.material || '', quantity: n(payload.quantity), status: payload.status || 'NEW', notes: payload.notes || '' }); },
+    deleteQuoteRequest: async id => { db.quote_requests = db.quote_requests.filter(row => row.id !== Number(id)); },
+    listSalesKpis: async () => copy(salesKpis()),
+    saveSalesKpi: async (id, payload) => { if (!payload.employeeId || !/^\d{4}-\d{2}$/.test(String(payload.period || ''))) throw new Error('KPI cần nhân viên và tháng hợp lệ.'); return upsert(db.sales_kpis, id, { employee_id: Number(payload.employeeId), period: payload.period, target_customers: n(payload.targetCustomers), target_calls: n(payload.targetCalls), target_meetings: n(payload.targetMeetings), target_revenue: n(payload.targetRevenue), bonus_percent: n(payload.bonusPercent), notes: payload.notes || '' }); },
+    deleteSalesKpi: async id => { db.sales_kpis = db.sales_kpis.filter(row => row.id !== Number(id)); },
+    saveSettings: async values => { Object.assign(db.settings, values); },
     getBanner: async () => ({ dataUrl: db.settings.banner_data || 'logo.jpg', name: 'Banner dùng chung', custom: db.settings.banner_data !== 'logo.jpg' }),
     pickBanner: async () => new Promise(resolve => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp'; input.onchange = () => { const file = input.files?.[0]; if (!file) return resolve(null); const reader = new FileReader(); reader.onload = () => { db.settings.banner_data = reader.result; resolve({ dataUrl: reader.result, name: file.name, custom: true }); }; reader.readAsDataURL(file); }; input.click(); }),
     seedDemoData: async () => { db = makeDb(); return { created: 9 }; },

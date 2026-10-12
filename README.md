@@ -9,4 +9,6 @@ Bản demo tĩnh dành cho khách hàng dùng thử trên GitHub Pages.
 - Bản demo chạy trực tiếp trên GitHub Pages; ứng dụng desktop không cần mở cổng HTTP trên máy khách.
 - Có trình sửa mẫu theo từng khối, xem trước A5 dọc và danh sách biến.
 - Có bộ lọc trạng thái hóa đơn ngay trên danh sách báo giá.
+- Có CRM Sale B2B, ba loại báo giá, tính bột sơn/vận chuyển và tự trừ kho khi chuyển xuất bán.
+- Mọi bảng có lọc nhanh, số dòng và tổng các cột số theo kết quả đang lọc.
 

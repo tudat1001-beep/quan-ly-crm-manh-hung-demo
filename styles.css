@@ -62,6 +62,9 @@ nav { padding: 7px 6px; overflow: auto; scrollbar-width: thin; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 
 .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 4px; max-height: calc(100vh - 145px); }
+.table-tools { min-height: 34px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0 6px; }
+.table-tools input { width: min(340px, 48%); height: 29px; border: 1px solid var(--line-dark); border-radius: 4px; padding: 4px 8px; }
+.table-summary { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; text-align: right; }
 table { width: 100%; border-collapse: collapse; white-space: nowrap; }
 th, td { height: 30px; padding: 4px 7px; border-right: 1px solid #e6eaed; border-bottom: 1px solid var(--line); text-align: left; }
 th:last-child, td:last-child { border-right: 0; }
@@ -172,6 +175,11 @@ tr:last-child td { border-bottom: 0; }
 .section-title { font-weight: 700; font-size: 12px; margin: 12px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
 .line-card { position: relative; border: 1px solid var(--line-dark); border-radius: 4px; padding: 8px; margin: 6px 0; background: #fbfcfc; }
 .line-grid { display: grid; grid-template-columns: repeat(6, minmax(105px, 1fr)); gap: 6px; }
+.quote-row { clear: both; padding-top: 5px; }
+.quote-row + .quote-row { margin-top: 5px; border-top: 1px dotted var(--line); }
+.quote-row-7 { grid-template-columns: repeat(7, minmax(105px, 1fr)); }
+.quote-row-9 { grid-template-columns: repeat(9, minmax(92px, 1fr)); }
+.quote-row-10 { grid-template-columns: repeat(10, minmax(86px, 1fr)); }
 .line-total { display: flex; justify-content: flex-end; gap: 16px; margin-top: 6px; padding-top: 5px; border-top: 1px dashed var(--line); font-size: 11px; font-variant-numeric: tabular-nums; }
 .line-total strong { color: var(--brand); }
 .remove-line { float: right; position: relative; z-index: 1; }
@@ -193,6 +201,7 @@ tr:last-child td { border-bottom: 0; }
   .form-grid { grid-template-columns: repeat(2, 1fr); }
   .field.span-4 { grid-column: span 2; }
   .line-grid { grid-template-columns: repeat(4, 1fr); }
+  .quote-row-7, .quote-row-9, .quote-row-10 { grid-template-columns: repeat(4, 1fr); }
   .template-editor-shell { grid-template-columns: 1fr; }
   .template-preview, .template-designer { height: 340px; min-height: 340px; }
   .invoice-choices { grid-template-columns: 1fr; }

@@ -26,6 +26,9 @@
     ['Bảng và tiền', 'items_table', 'Bảng chi tiết hàng hóa', 'Bảng hàng hóa mẫu'],
     ['Bảng và tiền', 'subtotal', 'Tiền trước thuế', '2.500.000'],
     ['Bảng và tiền', 'vat_total', 'Tổng thuế GTGT', '250.000'],
+    ['Bảng và tiền', 'shipping_cost', 'Phí vận chuyển khách trả', '150.000'],
+    ['Bảng và tiền', 'shipping_vat_amount', 'VAT phí vận chuyển', '15.000'],
+    ['Bảng và tiền', 'shipping_info', 'Thông tin vận chuyển', 'Giao tại kho khách hàng'],
     ['Bảng và tiền', 'total', 'Tổng thanh toán', '2.750.000'],
     ['Bảng và tiền', 'total_words', 'Tổng tiền bằng chữ', 'Hai triệu bảy trăm năm mươi nghìn đồng'],
     ['Chứng từ', 'notes', 'Ghi chú / điều khoản', 'Thanh toán trong vòng 15 ngày.'],
@@ -44,7 +47,6 @@
     ['Đơn đặt hàng', 'quality_requirements', 'Yêu cầu chất lượng', 'Hàng mới 100%, đúng quy cách'],
     ['Đơn đặt hàng', 'warranty', 'Điều kiện bảo hành', 'Bảo hành 12 tháng'],
     ['Đơn đặt hàng', 'documents_required', 'Chứng từ yêu cầu', 'Hóa đơn GTGT, phiếu giao hàng'],
-    ['Đơn đặt hàng', 'shipping_cost', 'Chi phí vận chuyển', '150.000'],
     ['Tạm ứng', 'use_from_date', 'Ngày bắt đầu sử dụng', '11/10/2026'],
     ['Tạm ứng', 'use_to_date', 'Ngày kết thúc sử dụng', '18/10/2026'],
     ['Tạm ứng', 'due_date', 'Hạn thanh toán tạm ứng', '20/10/2026'],
@@ -57,7 +59,7 @@
   ].map(([group, name, label, sample]) => ({ group, name, label, sample }));
 
   const titles = {
-    QUOTE_FULL: 'BÁO GIÁ', QUOTE_PROCESSING: 'BÁO GIÁ GIA CÔNG', SALE: 'PHIẾU XUẤT BÁN',
+    QUOTE_FULL: 'BÁO GIÁ', QUOTE_PROCESSING: 'BÁO GIÁ GIA CÔNG', QUOTE_PAINT: 'BÁO GIÁ SƠN TĨNH ĐIỆN', SALE: 'PHIẾU XUẤT BÁN',
     PURCHASE_ORDER: 'ĐƠN ĐẶT HÀNG', PURCHASE_REQUEST: 'PHIẾU ĐỀ NGHỊ MUA VẬT TƯ, THIẾT BỊ',
     ADVANCE_REQUEST: 'GIẤY ĐỀ NGHỊ TẠM ỨNG', ADVANCE_SETTLEMENT: 'GIẤY THANH TOÁN TIỀN TẠM ỨNG'
   };
@@ -66,20 +68,26 @@
     QUOTE_FULL: {
       metaText: 'Số: {{number}} · Ngày: {{date}}', infoHeading: 'THÔNG TIN KHÁCH HÀNG',
       infoText: '{{partner_label}}: {{partner_name}}\nĐịa chỉ: {{partner_address}}\nĐiện thoại: {{partner_phone}} · MST: {{partner_tax_code}}\nKho xuất: {{warehouse}}',
-      tableHeading: 'NỘI DUNG BÁO GIÁ', summaryText: 'Tạm tính: {{subtotal}} đồng\nThuế GTGT: {{vat_total}} đồng\nTỔNG THANH TOÁN: {{total}} đồng\nBằng chữ: {{total_words}}',
+      tableHeading: 'NỘI DUNG BÁO GIÁ', summaryText: 'Tạm tính: {{subtotal}} đồng\nPhí vận chuyển: {{shipping_cost}} đồng\nThuế GTGT: {{vat_total}} đồng\nTỔNG THANH TOÁN: {{total}} đồng\nBằng chữ: {{total_words}}',
       notesText: 'Ghi chú / điều khoản: {{notes}}', signaturesText: 'NGƯỜI LẬP\nKHÁCH HÀNG\nĐẠI DIỆN CÔNG TY'
     },
     QUOTE_PROCESSING: {
       metaText: 'Số: {{number}} · Ngày: {{date}}', infoHeading: 'THÔNG TIN KHÁCH HÀNG',
       infoText: '{{partner_label}}: {{partner_name}}\nĐịa chỉ: {{partner_address}}\nĐiện thoại: {{partner_phone}} · MST: {{partner_tax_code}}\nKho xuất: {{warehouse}}',
-      tableHeading: 'NỘI DUNG GIA CÔNG', summaryText: 'Tạm tính: {{subtotal}} đồng\nThuế GTGT: {{vat_total}} đồng\nTỔNG THANH TOÁN: {{total}} đồng\nBằng chữ: {{total_words}}',
+      tableHeading: 'NỘI DUNG GIA CÔNG', summaryText: 'Tạm tính: {{subtotal}} đồng\nPhí vận chuyển: {{shipping_cost}} đồng\nThuế GTGT: {{vat_total}} đồng\nTỔNG THANH TOÁN: {{total}} đồng\nBằng chữ: {{total_words}}',
       notesText: 'Ghi chú / điều khoản: {{notes}}', signaturesText: 'NGƯỜI LẬP\nKHÁCH HÀNG\nĐẠI DIỆN CÔNG TY'
+    },
+    QUOTE_PAINT: {
+      metaText: 'Số: {{number}} · Ngày: {{date}}', infoHeading: 'THÔNG TIN KHÁCH HÀNG',
+      infoText: '{{partner_label}}: {{partner_name}}\nĐịa chỉ: {{partner_address}}\nĐiện thoại: {{partner_phone}} · MST: {{partner_tax_code}}\nKho xuất: {{warehouse}}',
+      tableHeading: 'NỘI DUNG SƠN TĨNH ĐIỆN', summaryText: 'Tạm tính: {{subtotal}} đồng\nPhí vận chuyển: {{shipping_cost}} đồng\nThuế GTGT: {{vat_total}} đồng\nTỔNG THANH TOÁN: {{total}} đồng\nBằng chữ: {{total_words}}',
+      notesText: 'Vận chuyển: {{shipping_info}}\nGhi chú / điều khoản: {{notes}}', signaturesText: 'NGƯỜI LẬP\nKHÁCH HÀNG\nĐẠI DIỆN CÔNG TY'
     },
     SALE: {
       metaText: 'Số: {{number}} · Ngày: {{date}}', infoHeading: 'THÔNG TIN GIAO HÀNG',
       infoText: 'Khách hàng: {{partner_name}}\nĐịa chỉ: {{partner_address}}\nĐiện thoại: {{partner_phone}}\nKho xuất: {{warehouse}}',
-      tableHeading: 'HÀNG HÓA XUẤT BÁN', summaryText: 'TỔNG CỘNG: {{total}} đồng\nBằng chữ: {{total_words}}',
-      notesText: 'Ghi chú: {{notes}}', signaturesText: 'NGƯỜI LẬP\nTHỦ KHO\nNGƯỜI NHẬN'
+      tableHeading: 'HÀNG HÓA XUẤT BÁN', summaryText: 'Tạm tính: {{subtotal}} đồng\nPhí vận chuyển: {{shipping_cost}} đồng\nThuế GTGT: {{vat_total}} đồng\nTỔNG THANH TOÁN: {{total}} đồng\nBằng chữ: {{total_words}}',
+      notesText: 'Vận chuyển: {{shipping_info}}\nGhi chú: {{notes}}', signaturesText: 'NGƯỜI LẬP\nTHỦ KHO\nNGƯỜI NHẬN'
     },
     PURCHASE_ORDER: {
       metaText: 'Số đơn hàng: {{number}} · Ngày đặt hàng: {{date}}', infoHeading: 'THÔNG TIN ĐẶT HÀNG',
