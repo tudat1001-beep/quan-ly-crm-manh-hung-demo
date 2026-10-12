@@ -192,10 +192,15 @@ tr:last-child td { border-bottom: 0; }
 .quote-row-7 { grid-template-columns: repeat(8, minmax(100px, 1fr)); }
 .quote-row-9 { grid-template-columns: repeat(9, minmax(92px, 1fr)); }
 .quote-row-10 { grid-template-columns: repeat(10, minmax(86px, 1fr)); }
-.stock-deductions { grid-column: span 2; padding: 5px; border: 1px solid #b8c9c1; border-radius: 4px; background: #f1f8f5; }
+.stock-deductions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(260px, 1fr)); gap: 6px; padding: 5px; border: 1px solid #b8c9c1; border-radius: 4px; background: #f1f8f5; }
+.stock-deductions > label { grid-column: 1 / -1; }
 .stock-deduction-row { display: grid; grid-template-columns: minmax(150px, 1fr) 78px; align-items: center; gap: 5px; margin-top: 4px; }
 .stock-deduction-row small { color: var(--muted); font-size: 9px; }
 .stock-deduction-row input { min-width: 0; }
+.quote-cost-details { margin-top: 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
+.quote-cost-details summary { cursor: pointer; padding: 7px 9px; color: var(--brand); font-size: 11px; font-weight: 700; user-select: none; }
+.quote-cost-details[open] summary { border-bottom: 1px solid var(--line); }
+.quote-cost-details .quote-row { padding: 6px; }
 .line-total { display: flex; justify-content: flex-end; gap: 16px; margin-top: 6px; padding-top: 5px; border-top: 1px dashed var(--line); font-size: 11px; font-variant-numeric: tabular-nums; }
 .line-total strong { color: var(--brand); }
 .remove-line { float: right; position: relative; z-index: 1; }
@@ -218,7 +223,12 @@ tr:last-child td { border-bottom: 0; }
   .field.span-4 { grid-column: span 2; }
   .line-grid { grid-template-columns: repeat(4, 1fr); }
   .quote-row-7, .quote-row-9, .quote-row-10 { grid-template-columns: repeat(4, 1fr); }
+  .stock-deductions { grid-template-columns: repeat(2, minmax(240px, 1fr)); }
   .template-editor-shell { grid-template-columns: 1fr; }
   .template-preview, .template-designer { height: 340px; min-height: 340px; }
   .invoice-choices { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 700px) {
+  .stock-deductions { grid-template-columns: 1fr; }
 }

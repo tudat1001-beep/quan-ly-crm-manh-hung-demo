@@ -151,7 +151,7 @@ function optionLabel(row) {
 function options(rows, selected = '') { return rows.map(row => `<option value="${row.id}" ${String(row.id) === String(selected) ? 'selected' : ''}>${esc(optionLabel(row))}</option>`).join(''); }
 function statusLabel(status) { return ({ DRAFT: 'Nháp', SENT: 'Đã gửi', WON: 'Đã chốt', CONVERTED: 'Đã xuất', CANCELLED: 'Đã hủy', RECEIVED: 'Đã nhận', POSTED: 'Đã ghi sổ' })[status] || status; }
 function badge(status) { return `<span class="badge ${status}">${statusLabel(status)}</span>`; }
-const quoteTypeLabels = { FULL_SERVICE: 'Vật tư + gia công + sơn', CUSTOMER_MATERIAL: 'Gia công + sơn', PAINT_ONLY: 'Chỉ sơn tĩnh điện' };
+const quoteTypeLabels = { FULL_SERVICE: 'Vật tư + gia công + sơn', CUSTOMER_MATERIAL: 'Gia công + sơn', PROCESSING_ONLY: 'Chỉ gia công', PAINT_ONLY: 'Chỉ sơn tĩnh điện' };
 const invoiceStatusLabels = { PENDING: 'Chưa xuất HĐ', ISSUED: 'Đã xuất HĐ', RETAIL_NO_INVOICE: 'Không lấy HĐ – Bán lẻ' };
 
 async function refreshBootstrap() { state.bootstrap = await window.crm.bootstrap(); }
@@ -355,38 +355,30 @@ function quoteLine(index = Date.now()) {
   return `<div class="line-card quote-line" data-index="${index}"><button type="button" class="btn small danger remove-line">Xóa dòng</button><input type="hidden" name="stockQuantity" value="0"><div class="line-grid quote-row quote-row-7">
     <div class="field stock-deductions"><label>Vật tư trừ kho trên dòng này</label>
       <div class="stock-deduction-row"><select name="productId" aria-label="Vật tư chính"><option value="">1. Không trừ vật tư chính</option>${options(b.products)}</select><small>Tự tính kg</small></div>
-      <div class="stock-deduction-row"><select name="paintProductId" aria-label="Bột sơn"><option value="">2. Không trừ bột sơn</option>${options(b.products)}</select><small>Tự tính kg</small></div>
-      <div class="stock-deduction-row"><select name="extraProductId" aria-label="Vật tư phụ"><option value="">3. Không trừ vật tư phụ</option>${options(b.products)}</select><input name="extraStockQuantity" type="number" min="0" step="any" placeholder="SL trừ" aria-label="Số lượng vật tư phụ trừ kho"></div>
+      <div class="stock-deduction-row"><select name="paintProductId" aria-label="Bột sơn màu 1"><option value="">2. Không trừ sơn màu 1</option>${options(b.products)}</select><input name="paintQuantity" type="number" min="0" step="any" placeholder="SL màu 1" aria-label="Số sản phẩm sơn màu 1"></div>
+      <div class="stock-deduction-row"><select name="paintProduct2Id" aria-label="Bột sơn màu 2"><option value="">3. Không trừ sơn màu 2</option>${options(b.products)}</select><input name="paintQuantity2" type="number" min="0" step="any" placeholder="SL màu 2" aria-label="Số sản phẩm sơn màu 2"></div>
     </div>
     <div class="field"><label>Tên sản phẩm *</label><input name="description" required></div><div class="field"><label>ĐVT</label><input name="unit" value="cái"></div>
     <div class="field"><label>Dài (mm)</label><input name="lengthMm" type="number" min="0" step="any"></div><div class="field"><label>Rộng (mm)</label><input name="widthMm" type="number" min="0" step="any"></div><div class="field"><label>Dày (mm)</label><input name="thicknessMm" type="number" min="0" step="any"></div><div class="field"><label>Số lượng *</label><input name="quantity" type="number" min="0.001" step="any" value="1" required></div>
-  </div><div class="line-grid quote-row quote-row-10">
+  </div><details class="quote-cost-details"><summary>Chi phí & công thức — bấm để mở</summary><div class="line-grid quote-row quote-row-10">
     <div class="field"><label>Tỷ trọng</label><input name="density" type="number" min="0" step="any" value="7.85"></div><div class="field"><label>Giá vật liệu GC/kg</label><input name="materialPricePerKg" type="text" inputmode="numeric" class="money-input"></div>
-    <div class="field"><label>Giá vật liệu sơn/kg</label><input name="paintMaterialPricePerKg" type="text" inputmode="numeric" class="money-input"></div>
+    <div class="field"><label>Giá sơn màu 1/kg</label><input name="paintMaterialPricePerKg" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Giá sơn màu 2/kg</label><input name="paintMaterialPrice2PerKg" type="text" inputmode="numeric" class="money-input"></div>
     <div class="field"><label>Giờ gia công</label><input name="laborHours" type="number" min="0" step="any"></div><div class="field"><label>Giờ sơn tĩnh điện</label><input name="paintLaborHours" type="number" min="0" step="any"></div><div class="field"><label>Định mức bột sơn kg/m²</label><input name="powderNormKgM2" type="number" min="0" step="any"></div>
     <div class="field"><label>Số mặt sơn</label><input name="coatingSides" type="number" min="1" step="1" value="1"></div><div class="field"><label>Đơn giá/giờ</label><input name="laborRatePerHour" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Số người</label><input name="workerCount" type="number" min="1" step="any" value="1"></div>
   </div><div class="line-grid quote-row quote-row-9">
     <div class="field"><label>VT Tiêu hao/SP</label><input name="consumablesPerItem" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Khấu hao MMTB/giờ</label><input name="depreciationPerHour" type="text" inputmode="numeric" class="money-input"></div><div class="field"><label>Chi phí sơn tĩnh điện đ/m²</label><input name="coatingPricePerM2" type="text" inputmode="numeric" class="money-input"></div>
     <div class="field"><label>Điện (kWh)</label><input name="electricityKwh" type="number" min="0" step="any"></div><div class="field"><label>Giá điện/kWh</label><input name="electricityRate" type="text" inputmode="numeric" class="money-input"></div>
     <div class="field"><label>Hao hụt (%)</label><input name="wastePercent" type="number" min="0" step="any" value="0"></div><div class="field"><label>Lợi nhuận (%)</label><input name="profitPercent" type="number" min="0" step="any" value="15"></div><div class="field"><label>CK % khách (0–20)</label><input name="customerDiscountPercent" type="number" min="0" max="20" step="any" value="0"></div><div class="field"><label>VAT (%)</label><input name="vatPercent" type="number" min="0" step="any" value="10"></div>
-  </div><div class="line-total"><span>KL vật liệu: <b data-result="weight">0</b> kg</span><span>KL sơn: <b data-result="paint-weight">0</b> kg</span><span>Giá vốn: <b data-result="cost">0</b> ₫</span><span>CK theo dõi: <b data-result="discount">0</b> ₫</span><span>Thành tiền: <strong data-result="total">0 ₫</strong></span></div></div>`;
+  </div></details><div class="line-total"><span>KL vật liệu: <b data-result="weight">0</b> kg</span><span>Sơn màu 1: <b data-result="paint-weight">0</b> kg</span><span>Sơn màu 2: <b data-result="paint-weight-2">0</b> kg</span><span>Giá vốn: <b data-result="cost">0</b> ₫</span><span>CK theo dõi: <b data-result="discount">0</b> ₫</span><span>Thành tiền: <strong data-result="total">0 ₫</strong></span></div></div>`;
 }
 
 function quoteItemFromDb(item) {
-  const fields = { productId: 'product_id', paintProductId: 'paint_product_id', extraProductId: 'extra_product_id', extraStockQuantity: 'extra_stock_quantity', description: 'description', unit: 'unit', quantity: 'quantity', stockQuantity: 'stock_quantity',
+  const fields = { productId: 'product_id', paintProductId: 'paint_product_id', paintProduct2Id: 'paint_product_2_id', paintQuantity: 'paint_quantity', paintQuantity2: 'paint_quantity_2', description: 'description', unit: 'unit', quantity: 'quantity', stockQuantity: 'stock_quantity',
     lengthMm: 'length_mm', widthMm: 'width_mm', thicknessMm: 'thickness_mm', density: 'density', materialPricePerKg: 'material_price_per_kg',
-    paintMaterialPricePerKg: 'paint_material_price_per_kg', laborHours: 'labor_hours', paintLaborHours: 'paint_labor_hours', laborRatePerHour: 'labor_rate_per_hour', workerCount: 'worker_count', consumablesPerItem: 'consumables_per_item',
+    paintMaterialPricePerKg: 'paint_material_price_per_kg', paintMaterialPrice2PerKg: 'paint_material_price_2_per_kg', laborHours: 'labor_hours', paintLaborHours: 'paint_labor_hours', laborRatePerHour: 'labor_rate_per_hour', workerCount: 'worker_count', consumablesPerItem: 'consumables_per_item',
     electricityKwh: 'electricity_kwh', electricityRate: 'electricity_rate', depreciationPerHour: 'depreciation_per_hour', coatingSides: 'coating_sides',
     powderNormKgM2: 'powder_norm_kg_m2', coatingPricePerM2: 'coating_price_per_m2', wastePercent: 'waste_percent', profitPercent: 'profit_percent', customerDiscountPercent: 'customer_discount_percent', vatPercent: 'vat_percent' };
   return Object.fromEntries(Object.entries(fields).map(([key, source]) => [key, item[source]]));
-}
-
-function updateQuoteCustomerInfo() {
-  const select = $('#quote-form [name="customerId"]');
-  const box = $('#quote-customer-info');
-  if (!select || !box) return;
-  const customer = state.bootstrap.customers.find(row => row.id === Number(select.value));
-  box.innerHTML = customer ? `<strong>${esc(customer.name)}</strong> · ${esc(customer.phone || 'Chưa có SĐT')} · MST: ${esc(customer.tax_code || '—')}<br>${esc(customer.address || 'Chưa có địa chỉ')} <button type="button" class="btn small" data-quote-customer-edit data-id="${customer.id}">Sửa khách hàng</button>` : '';
 }
 
 async function showQuoteForm(id) {
@@ -398,17 +390,15 @@ async function showQuoteForm(id) {
     <div class="field"><label>Ngày báo giá</label><input name="date" type="date" value="${esc(quote?.quote_date || today())}" required></div>
     <div class="field"><label>Khách hàng</label><select name="customerId" required>${options(state.bootstrap.customers, quote?.customer_id)}</select></div>
     <div class="field"><label>Kho xuất</label><select name="warehouseId" required>${options(state.bootstrap.warehouses, quote?.warehouse_id)}</select></div>
-    <div class="field"><label>Loại báo giá</label><select name="quoteType"><option value="FULL_SERVICE" ${quote?.quote_type === 'FULL_SERVICE' || !quote ? 'selected' : ''}>Cung cấp vật tư + gia công + sơn</option><option value="CUSTOMER_MATERIAL" ${quote?.quote_type === 'CUSTOMER_MATERIAL' ? 'selected' : ''}>Gia công + sơn tĩnh điện</option><option value="PAINT_ONLY" ${quote?.quote_type === 'PAINT_ONLY' ? 'selected' : ''}>Chỉ sơn tĩnh điện</option></select></div>
+    <div class="field"><label>Loại báo giá</label><select name="quoteType"><option value="FULL_SERVICE" ${quote?.quote_type === 'FULL_SERVICE' || !quote ? 'selected' : ''}>Cung cấp vật tư + gia công + sơn</option><option value="CUSTOMER_MATERIAL" ${quote?.quote_type === 'CUSTOMER_MATERIAL' ? 'selected' : ''}>Gia công + sơn tĩnh điện</option><option value="PROCESSING_ONLY" ${quote?.quote_type === 'PROCESSING_ONLY' ? 'selected' : ''}>Chỉ gia công (khách cấp vật tư)</option><option value="PAINT_ONLY" ${quote?.quote_type === 'PAINT_ONLY' ? 'selected' : ''}>Chỉ sơn tĩnh điện</option></select></div>
     <div class="field"><label>Nhân viên Sale</label><select name="assignedEmployeeId"><option value="">Chưa phân công</option>${options(state.bootstrap.employees, quote?.assigned_employee_id)}</select></div>
     <div class="field"><label>Phí vận chuyển khách trả</label><input name="shippingCost" class="money-input" inputmode="numeric" value="${moneyInput(quote?.shipping_cost || 0)}"></div><div class="field"><label>VAT vận chuyển (%)</label><input name="shippingVatPercent" type="number" min="0" step="any" value="${quote?.shipping_vat_percent ?? 10}"></div>
     <div class="field span-2"><label>Thông tin vận chuyển</label><input name="shippingInfo" value="${esc(quote?.shipping_info || '')}" placeholder="Để trống nếu công ty trả"></div><div class="field span-2"><label>Ghi chú / điều khoản</label><input name="notes" value="${esc(quote?.notes || '')}"></div>
-    <div id="quote-customer-info" class="field hint span-4"></div>
-  </div><div class="hint">Mỗi dòng báo giá có thể trừ cùng lúc 3 loại tồn kho: vật tư chính tự tính theo kích thước, bột sơn tự tính theo diện tích × định mức × số mặt × số lượng, và một vật tư phụ có số lượng nhập trực tiếp. Chiết khấu khách chỉ theo dõi nội bộ, không trừ vào tổng tiền và không in trên phiếu xuất bán.</div><div class="section-title">Chi tiết giá thành</div><div id="quote-lines">${items.map((_, index) => quoteLine(index)).join('')}</div><button type="button" class="btn" id="add-quote-line">+ Thêm dòng</button><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">${quote ? 'Lưu thay đổi' : 'Lưu báo giá'}</button></div></form>`);
+  </div><div class="section-title">Chi tiết giá thành</div><div id="quote-lines">${items.map((_, index) => quoteLine(index)).join('')}</div><button type="button" class="btn" id="add-quote-line">+ Thêm dòng</button><div class="form-actions"><button type="button" class="btn" data-close-modal>Đóng</button><button class="btn primary">${quote ? 'Lưu thay đổi' : 'Lưu báo giá'}</button></div></form>`);
   $$('.quote-line').forEach((line, index) => Object.entries(items[index]).forEach(([name, value]) => {
     const input = $(`[name="${name}"]`, line);
     if (input) input.value = input.classList.contains('money-input') ? moneyInput(value) : value ?? '';
   }));
-  updateQuoteCustomerInfo();
   await Promise.all($$('.quote-line').map(updateQuoteLine));
 }
 
@@ -418,9 +408,12 @@ function lineData(node) {
 
 async function updateQuoteLine(node) {
   if (!node) return;
-  const calc = await window.crm.calculateCost(lineData(node));
+  const data = lineData(node);
+  if (data.paintProductId && !data.paintQuantity) data.paintQuantity = Math.max(0, data.quantity - (data.paintQuantity2 || 0));
+  const calc = await window.crm.calculateCost(data);
   $('[data-result="weight"]', node).textContent = calc.totalWeight.toFixed(3);
   $('[data-result="paint-weight"]', node).textContent = calc.paintWeight.toFixed(3);
+  $('[data-result="paint-weight-2"]', node).textContent = calc.paintWeight2.toFixed(3);
   $('[data-result="cost"]', node).textContent = money(calc.costBeforeProfit);
   $('[data-result="discount"]', node).textContent = money(calc.customerDiscount);
   $('[data-result="total"]', node).textContent = `${money(calc.total)} ₫`;
@@ -774,7 +767,6 @@ document.addEventListener('input', event => {
 });
 
 document.addEventListener('change', event => {
-  if (event.target.name === 'customerId' && event.target.closest('#quote-form')) updateQuoteCustomerInfo();
   if (event.target.name === 'productId' && event.target.closest('.quote-line')) {
     const product = state.bootstrap.products.find(item => item.id === Number(event.target.value));
     const line = event.target.closest('.quote-line');
@@ -791,6 +783,14 @@ document.addEventListener('change', event => {
     const line = event.target.closest('.quote-line');
     if (product && !$('[name="paintMaterialPricePerKg"]', line).value) {
       $('[name="paintMaterialPricePerKg"]', line).value = moneyInput(product.purchase_price);
+      updateQuoteLine(line);
+    }
+  }
+  if (event.target.name === 'paintProduct2Id' && event.target.closest('.quote-line')) {
+    const product = state.bootstrap.products.find(item => item.id === Number(event.target.value));
+    const line = event.target.closest('.quote-line');
+    if (product && !$('[name="paintMaterialPrice2PerKg"]', line).value) {
+      $('[name="paintMaterialPrice2PerKg"]', line).value = moneyInput(product.purchase_price);
       updateQuoteLine(line);
     }
   }

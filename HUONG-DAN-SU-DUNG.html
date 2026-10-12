@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hướng dẫn sử dụng — Quản lý CRM Mạnh Hùng</title>
+  <style>
+    :root { --brand:#a51d22; --ink:#1d2933; --muted:#61707b; --line:#d7dfe4; --soft:#f4f7f8; --note:#fff7df; --ok:#eaf7f1; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; color:var(--ink); background:#eef2f4; font:15px/1.55 "Segoe UI",Arial,sans-serif; }
+    header { background:linear-gradient(135deg,#7d1016,#b6292f); color:#fff; padding:34px max(24px,calc((100% - 1120px)/2)); }
+    header h1 { margin:0 0 6px; font-size:30px; }
+    header p { margin:0; opacity:.9; }
+    .layout { display:grid; grid-template-columns:260px minmax(0,820px); gap:22px; max-width:1120px; margin:22px auto; padding:0 18px 40px; align-items:start; }
+    nav { position:sticky; top:16px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px; }
+    nav strong { display:block; margin-bottom:8px; }
+    nav a { display:block; color:#34434e; text-decoration:none; padding:6px 8px; border-radius:5px; }
+    nav a:hover { background:var(--soft); color:var(--brand); }
+    main { min-width:0; }
+    section { background:#fff; border:1px solid var(--line); border-radius:10px; padding:22px; margin-bottom:16px; }
+    h2 { margin:0 0 14px; color:var(--brand); font-size:21px; }
+    h3 { margin:20px 0 8px; font-size:16px; }
+    ol,ul { padding-left:22px; }
+    li + li { margin-top:5px; }
+    .note,.success { border-radius:7px; padding:11px 13px; margin:12px 0; }
+    .note { background:var(--note); border:1px solid #ebcf79; }
+    .success { background:var(--ok); border:1px solid #9fd2bd; }
+    .step { display:grid; grid-template-columns:32px 1fr; gap:10px; margin:10px 0; }
+    .step b:first-child { display:grid; place-items:center; width:28px; height:28px; border-radius:50%; color:#fff; background:var(--brand); }
+    table { width:100%; border-collapse:collapse; margin:10px 0; font-size:14px; }
+    th,td { border:1px solid var(--line); padding:8px; text-align:left; vertical-align:top; }
+    th { background:var(--soft); }
+    code { background:#f0f3f5; padding:2px 5px; border-radius:4px; }
+    .formula { font-weight:700; color:#0b6b53; }
+    .toolbar { max-width:1120px; margin:14px auto 0; padding:0 18px; text-align:right; }
+    button { border:1px solid #fff; background:#fff; color:var(--brand); border-radius:5px; padding:7px 12px; font-weight:700; cursor:pointer; }
+    footer { color:var(--muted); text-align:center; padding:10px 20px 30px; }
+    @media (max-width:850px) { .layout { grid-template-columns:1fr; } nav { position:static; } }
+    @media print { body { background:#fff; font-size:11pt; } header { padding:18px; } .toolbar,nav { display:none; } .layout { display:block; margin:0; padding:0; } section { border:0; break-inside:avoid; padding:12px 0; margin:0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Hướng dẫn sử dụng Quản lý CRM Mạnh Hùng</h1>
+    <p>Phiên bản desktop cục bộ 0.8.4 · Báo giá, kho, mua bán, thu chi và CRM Sale B2B</p>
+  </header>
+  <div class="toolbar"><button type="button" onclick="window.print()">In / Lưu PDF hướng dẫn</button></div>
+  <div class="layout">
+    <nav aria-label="Mục lục">
+      <strong>Mục lục</strong>
+      <a href="#bat-dau">1. Bắt đầu</a>
+      <a href="#danh-muc">2. Danh mục ban đầu</a>
+      <a href="#bao-gia">3. Lập báo giá</a>
+      <a href="#hai-mau">4. Một dòng có hai màu sơn</a>
+      <a href="#truong-hop">5. Các trường hợp nghiệp vụ</a>
+      <a href="#xuat-ban">6. Chốt đơn và trừ kho</a>
+      <a href="#hoa-don">7. Theo dõi hóa đơn</a>
+      <a href="#mau-in">8. Mẫu in A5</a>
+      <a href="#cac-phan-he">9. Các phân hệ khác</a>
+      <a href="#xoa-sao-luu">10. Xóa và sao lưu</a>
+      <a href="#demo">11. Dữ liệu mẫu và demo</a>
+      <a href="#loi">12. Xử lý lỗi thường gặp</a>
+    </nav>
+    <main>
+      <section id="bat-dau">
+        <h2>1. Bắt đầu</h2>
+        <ol>
+          <li>Cài ứng dụng bằng file <strong>Quan ly CRM Manh Hung Setup 0.8.4.exe</strong>.</li>
+          <li>Mở ứng dụng từ màn hình Desktop hoặc Start Menu. Ứng dụng chạy cục bộ, không mở cổng mạng.</li>
+          <li>Vào <strong>Cài đặt & sao lưu</strong>, nhập thông tin công ty, tiền tố hóa đơn và số hóa đơn bắt đầu.</li>
+          <li>Nếu cần kiểm tra nhanh, bấm <strong>Tạo dữ liệu mẫu</strong>.</li>
+        </ol>
+        <div class="note"><strong>Lưu ý:</strong> dữ liệu thật nằm trên máy đang cài ứng dụng. Hãy sao lưu định kỳ và giữ file sao lưu ở ổ đĩa khác.</div>
+      </section>
+
+      <section id="danh-muc">
+        <h2>2. Khai báo danh mục ban đầu</h2>
+        <table>
+          <thead><tr><th>Danh mục</th><th>Cần nhập</th><th>Dùng ở đâu</th></tr></thead>
+          <tbody>
+            <tr><td>Hàng hóa</td><td>Mã, tên, đơn vị, giá nhập, giá bán, VAT</td><td>Vật tư thép, từng màu bột sơn và hàng mua bán</td></tr>
+            <tr><td>Khách hàng</td><td>Tên, điện thoại, địa chỉ, MST, người liên hệ</td><td>Báo giá, hóa đơn, công nợ, CRM Sale</td></tr>
+            <tr><td>Nhà cung cấp</td><td>Tên, liên hệ, địa chỉ, MST</td><td>Đơn đặt hàng, nhập kho, công nợ</td></tr>
+            <tr><td>Kho</td><td>Mã, tên, địa chỉ</td><td>Mọi nghiệp vụ nhập, xuất và chuyển kho</td></tr>
+            <tr><td>Nhân viên</td><td>Mã, tên, liên hệ</td><td>Sale, chăm sóc khách, tạm ứng</td></tr>
+          </tbody>
+        </table>
+        <p>Các ô chọn đều cho phép <strong>gõ để tìm</strong> hoặc bấm mũi tên để mở danh sách. Dòng nhỏ bên dưới hiển thị mã, tên, đơn vị và giá để kiểm tra trước khi chọn.</p>
+      </section>
+
+      <section id="bao-gia">
+        <h2>3. Lập báo giá</h2>
+        <div class="step"><b>1</b><div>Vào <strong>Báo giá</strong> → <strong>Lập báo giá mới</strong>.</div></div>
+        <div class="step"><b>2</b><div>Chọn ngày, khách hàng, kho xuất, loại báo giá và nhân viên Sale.</div></div>
+        <div class="step"><b>3</b><div>Nhập phí vận chuyển, VAT vận chuyển và điều khoản nếu có.</div></div>
+        <div class="step"><b>4</b><div>Ở mỗi dòng, chọn vật tư chính, sơn màu 1, sơn màu 2; sau đó nhập tên sản phẩm, kích thước và số lượng.</div></div>
+        <div class="step"><b>5</b><div>Bấm <strong>Chi phí & công thức — bấm để mở</strong> để nhập giá vật liệu, nhân công, định mức sơn, tiêu hao, điện, khấu hao, lợi nhuận và VAT.</div></div>
+        <div class="step"><b>6</b><div>Kiểm tra khối lượng và thành tiền luôn hiển thị cuối dòng, rồi bấm <strong>Lưu báo giá</strong>.</div></div>
+
+        <h3>Công thức chính</h3>
+        <p class="formula">Khối lượng thép = dài × rộng × dày × tỷ trọng × số lượng</p>
+        <p>Kích thước nhập bằng mm; hệ thống tự quy đổi theo công thức đã cài.</p>
+        <p class="formula">Khối lượng sơn từng màu = diện tích 1 sản phẩm × số mặt sơn × số lượng của màu × định mức kg/m²</p>
+        <p class="formula">Giá vốn = vật liệu + sơn + nhân công + tiêu hao + điện + khấu hao + chi phí sơn + hao hụt</p>
+        <p>Hệ thống cộng lợi nhuận và VAT để ra thành tiền. Chiết khấu khách chỉ dùng theo dõi nội bộ, không trừ vào tổng báo giá.</p>
+      </section>
+
+      <section id="hai-mau">
+        <h2>4. Ví dụ: một dòng có vật tư và hai màu sơn</h2>
+        <div class="success"><strong>Đơn hàng:</strong> 10 tấm thép 200 × 200 × 2 mm, gia công và sơn 2 mặt; 5 tấm trắng, 5 tấm đen.</div>
+        <ol>
+          <li>Chọn <strong>Vật tư chính</strong>: mã tấm thép 2 mm.</li>
+          <li>Chọn <strong>Sơn màu 1</strong>: mã bột sơn trắng; nhập <strong>SL màu 1 = 5</strong>.</li>
+          <li>Chọn <strong>Sơn màu 2</strong>: mã bột sơn đen; nhập <strong>SL màu 2 = 5</strong>.</li>
+          <li>Nhập dài 200, rộng 200, dày 2, số lượng 10.</li>
+          <li>Mở phần chi phí, nhập số mặt sơn = 2, định mức bột sơn và giá/kg riêng của từng màu.</li>
+        </ol>
+        <p>Khi chuyển báo giá sang phiếu xuất, hệ thống trừ toàn bộ khối lượng thép và trừ riêng khối lượng bột sơn trắng, bột sơn đen trên đúng một dòng sản phẩm.</p>
+        <div class="note">Tổng <strong>SL màu 1 + SL màu 2</strong> không được lớn hơn số lượng sản phẩm. Nếu chỉ dùng một màu, chọn màu 1 và có thể để trống SL màu 1; hệ thống dùng toàn bộ số lượng.</div>
+      </section>
+
+      <section id="truong-hop">
+        <h2>5. Chọn đúng trường hợp nghiệp vụ</h2>
+        <table>
+          <thead><tr><th>Trường hợp</th><th>Loại báo giá</th><th>Cách nhập kho/chi phí</th></tr></thead>
+          <tbody>
+            <tr><td>Công ty cấp thép, gia công và sơn</td><td>Vật tư + gia công + sơn</td><td>Chọn vật tư chính và các mã sơn; nhập đầy đủ chi phí.</td></tr>
+            <tr><td>Khách cấp thép, công ty gia công và sơn</td><td>Gia công + sơn</td><td>Để trống vật tư chính; chọn mã sơn; nhập kích thước, số mặt, định mức, nhân công và tiêu hao.</td></tr>
+            <tr><td>Khách cấp thép, chỉ gia công, không sơn</td><td>Chỉ gia công (khách cấp vật tư)</td><td>Để trống cả ba mã kho; chỉ nhập nhân công, VT tiêu hao/SP, điện và khấu hao cần tính.</td></tr>
+            <tr><td>Chỉ nhận sơn tĩnh điện</td><td>Chỉ sơn tĩnh điện</td><td>Để trống vật tư chính; chọn một hoặc hai mã sơn và nhập thông số sơn.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="xuat-ban">
+        <h2>6. Chốt đơn, xuất bán và trừ tồn</h2>
+        <ol>
+          <li>Ở danh sách báo giá, đổi trạng thái sang <strong>Đã chốt</strong>.</li>
+          <li>Bấm <strong>Chuyển xuất bán</strong>. Hệ thống kiểm tra tồn của từng mã trước khi ghi sổ.</li>
+          <li>Nếu đủ tồn, hệ thống tạo phiếu xuất bán và trừ kho vật tư chính cùng từng màu sơn.</li>
+          <li>Vào <strong>Tồn kho</strong> để kiểm tra số dư và biến động.</li>
+        </ol>
+        <div class="note">Một báo giá chỉ được chuyển xuất một lần. Muốn sửa báo giá đã chuyển, phải xóa phiếu xuất bán để hoàn tồn và mở lại báo giá.</div>
+      </section>
+
+      <section id="hoa-don">
+        <h2>7. Theo dõi hóa đơn trên báo giá</h2>
+        <p>Dùng nút trạng thái hóa đơn để chọn:</p>
+        <ul>
+          <li><strong>Chưa xuất HĐ:</strong> đơn đang chờ xử lý.</li>
+          <li><strong>Đã xuất HĐ:</strong> số hóa đơn tự sinh theo cấu hình; ngày mặc định là hôm nay và có thể sửa.</li>
+          <li><strong>Không lấy HĐ – Bán lẻ:</strong> khách không nhận hóa đơn.</li>
+        </ul>
+        <p>Dùng bộ lọc phía trên bảng để rà nhanh các đơn chưa xuất hóa đơn.</p>
+      </section>
+
+      <section id="mau-in">
+        <h2>8. Mẫu in khổ A5 dọc</h2>
+        <ol>
+          <li>Vào <strong>Mẫu in</strong>, chọn đúng loại chứng từ.</li>
+          <li>Bật/tắt các khối, sửa nội dung và bấm biến trong danh sách để chèn.</li>
+          <li>Kiểm tra bản xem trước bên phải; banner dùng chung luôn giữ đủ tỷ lệ ảnh.</li>
+          <li>Lưu mẫu, quay lại chứng từ và bấm <strong>Xem/In</strong> hoặc <strong>PDF</strong>.</li>
+        </ol>
+        <p>Các biến thường dùng gồm số chứng từ, ngày, khách hàng/nhà cung cấp, bảng chi tiết, tổng trước thuế, VAT, vận chuyển, tổng cộng, số tiền bằng chữ và ghi chú.</p>
+      </section>
+
+      <section id="cac-phan-he">
+        <h2>9. Các phân hệ khác</h2>
+        <ul>
+          <li><strong>Đơn đặt hàng:</strong> lập đơn mua, nhận toàn bộ để tăng tồn kho.</li>
+          <li><strong>Đề nghị mua:</strong> ghi nhận vật tư, quy cách, bộ phận và mục đích mua.</li>
+          <li><strong>Nhập xuất kho:</strong> nhập mua, bán trực tiếp, chuyển kho, trả nhà cung cấp và khách trả hàng.</li>
+          <li><strong>Thu chi & quỹ:</strong> thu khách, chi nhà cung cấp, chuyển quỹ, tạm ứng và hoàn ứng.</li>
+          <li><strong>Công nợ:</strong> theo dõi phải thu khách hàng và phải trả nhà cung cấp.</li>
+          <li><strong>CRM Sale B2B:</strong> chăm sóc khách, công việc, cơ hội, RFQ và KPI nhân viên Sale.</li>
+          <li><strong>Bảng dữ liệu:</strong> gõ vào ô “Lọc nhanh”; số dòng và tổng cột số tự cập nhật theo kết quả lọc.</li>
+        </ul>
+      </section>
+
+      <section id="xoa-sao-luu">
+        <h2>10. Xóa dữ liệu và sao lưu</h2>
+        <ul>
+          <li>Danh mục chưa dùng có thể xóa trực tiếp.</li>
+          <li>Danh mục đã được chứng từ sử dụng sẽ bị chặn xóa để tránh hỏng dữ liệu.</li>
+          <li>Xóa phiếu xuất/nhập sẽ đảo ảnh hưởng tồn kho và công nợ liên quan.</li>
+          <li>Vào <strong>Cài đặt & sao lưu</strong> → <strong>Sao lưu ngay</strong>; giữ cả file SQLite và thư mục <code>.files</code> đi kèm.</li>
+        </ul>
+      </section>
+
+      <section id="demo">
+        <h2>11. Dữ liệu mẫu và bản demo Internet</h2>
+        <p>Nút <strong>Tạo dữ liệu mẫu</strong> tạo khách hàng, hàng hóa, tồn đầu, báo giá hai màu sơn, đơn mua, thu chi và dữ liệu CRM để kiểm tra. Bấm lại không tạo trùng.</p>
+        <p>Bản demo Internet có cùng giao diện và nghiệp vụ chính nhưng chỉ lưu dữ liệu tạm trong bộ nhớ trình duyệt. Tải lại trang sẽ đưa dữ liệu về mẫu; demo không truy cập dữ liệu thật trên máy.</p>
+      </section>
+
+      <section id="loi">
+        <h2>12. Xử lý lỗi thường gặp</h2>
+        <table>
+          <thead><tr><th>Thông báo/hiện tượng</th><th>Cách xử lý</th></tr></thead>
+          <tbody>
+            <tr><td>Không đủ tồn kho</td><td>Kiểm tra đúng kho, mã vật tư/màu sơn và nhập kho bổ sung trước khi chuyển xuất.</td></tr>
+            <tr><td>Tổng số lượng màu lớn hơn số lượng sản phẩm</td><td>Giảm SL màu 1 hoặc SL màu 2 để tổng không vượt số lượng dòng.</td></tr>
+            <tr><td>Không xóa được danh mục</td><td>Danh mục đã được dùng trong chứng từ; giữ lại để bảo toàn lịch sử.</td></tr>
+            <tr><td>Giá/khối lượng bằng 0</td><td>Mở “Chi phí & công thức”, kiểm tra kích thước, dày, tỷ trọng, định mức, số mặt và đơn giá.</td></tr>
+            <tr><td>Không sửa được báo giá</td><td>Báo giá đã chuyển xuất; xóa phiếu xuất bán liên quan trước.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+  <footer>Quản lý CRM Mạnh Hùng · Hướng dẫn sử dụng phiên bản 0.8.4</footer>
+</body>
+</html>

@@ -18,9 +18,15 @@
     const consumablesCost = n(input.consumablesPerItem) * quantity;
     const electricityCost = n(input.electricityKwh) * n(input.electricityRate);
     const depreciationCost = n(input.depreciationPerHour) * n(input.laborHours);
-    const coatingArea = areaEach * Math.max(1, n(input.coatingSides)) * quantity;
-    const paintWeight = coatingArea * n(input.powderNormKgM2);
-    const paintMaterialCost = paintWeight * n(input.paintMaterialPricePerKg);
+    const hasPaintAllocation = n(input.paintQuantity) > 0 || n(input.paintQuantity2) > 0;
+    const paintQuantity = hasPaintAllocation ? Math.max(0, n(input.paintQuantity)) : quantity;
+    const paintQuantity2 = Math.max(0, n(input.paintQuantity2));
+    const coatingArea1 = areaEach * Math.max(1, n(input.coatingSides)) * paintQuantity;
+    const coatingArea2 = areaEach * Math.max(1, n(input.coatingSides)) * paintQuantity2;
+    const coatingArea = coatingArea1 + coatingArea2;
+    const paintWeight = coatingArea1 * n(input.powderNormKgM2);
+    const paintWeight2 = coatingArea2 * n(input.powderNormKgM2);
+    const paintMaterialCost = paintWeight * n(input.paintMaterialPricePerKg) + paintWeight2 * n(input.paintMaterialPrice2PerKg);
     const coatingCost = coatingArea * n(input.coatingPricePerM2);
     const wasteCost = (materialCost + coatingCost) * n(input.wastePercent) / 100;
     const costBeforeProfit = materialCost + paintMaterialCost + laborCost + paintLaborCost + consumablesCost + electricityCost + depreciationCost + coatingCost + wasteCost;
@@ -29,17 +35,23 @@
     const customerDiscount = priceBeforeVat * Math.min(20, Math.max(0, n(input.customerDiscountPercent))) / 100;
     const vat = priceBeforeVat * n(input.vatPercent) / 100;
     const round = value => Math.round(value + Number.EPSILON);
-    return { areaEach, weightEach, totalWeight, coatingArea, paintWeight, materialCost: round(materialCost), paintMaterialCost: round(paintMaterialCost), laborCost: round(laborCost), paintLaborCost: round(paintLaborCost), consumablesCost: round(consumablesCost),
+    return { areaEach, weightEach, totalWeight, coatingArea, coatingArea1, coatingArea2, paintQuantity, paintQuantity2, paintWeight, paintWeight2, materialCost: round(materialCost), paintMaterialCost: round(paintMaterialCost), laborCost: round(laborCost), paintLaborCost: round(paintLaborCost), consumablesCost: round(consumablesCost),
       electricityCost: round(electricityCost), depreciationCost: round(depreciationCost), coatingCost: round(coatingCost), wasteCost: round(wasteCost),
       costBeforeProfit: round(costBeforeProfit), profit: round(profit), priceBeforeVat: round(priceBeforeVat), customerDiscount: round(customerDiscount), vat: round(vat), total: round(priceBeforeVat + vat) };
   }
 
   function quoteItem(quoteId, input, id) {
-    const calc = calculateCost(input);
     if (n(input.customerDiscountPercent) < 0 || n(input.customerDiscountPercent) > 20) throw new Error('Chiết khấu khách hàng phải từ 0 đến 20%.');
-    return { id, quote_id: quoteId, product_id: Number(input.productId) || null, paint_product_id: Number(input.paintProductId) || null, extra_product_id: Number(input.extraProductId) || null, description: input.description, unit: input.unit || 'cái', quantity: n(input.quantity),
-      stock_quantity: calc.totalWeight || n(input.stockQuantity), paint_weight: calc.paintWeight, extra_stock_quantity: Math.max(0, n(input.extraStockQuantity)), length_mm: n(input.lengthMm), width_mm: n(input.widthMm), thickness_mm: n(input.thicknessMm), density: n(input.density) || 7.85,
-      material_price_per_kg: n(input.materialPricePerKg), paint_material_price_per_kg: n(input.paintMaterialPricePerKg), labor_hours: n(input.laborHours), paint_labor_hours: n(input.paintLaborHours), powder_norm_kg_m2: n(input.powderNormKgM2), labor_rate_per_hour: n(input.laborRatePerHour), worker_count: n(input.workerCount) || 1,
+    const paintProductId = Number(input.paintProductId) || null;
+    const paintProduct2Id = Number(input.paintProduct2Id) || null;
+    const paintQuantity2 = paintProduct2Id ? Math.max(0, n(input.paintQuantity2)) : 0;
+    const paintQuantity = paintProductId ? Math.max(0, n(input.paintQuantity) || n(input.quantity) - paintQuantity2) : 0;
+    if (paintProduct2Id && paintQuantity2 <= 0) throw new Error('Đã chọn sơn màu 2 thì cần nhập số lượng màu 2.');
+    if (paintQuantity + paintQuantity2 > n(input.quantity) + 1e-9) throw new Error('Tổng số lượng phân bổ cho các màu sơn không được lớn hơn số lượng sản phẩm.');
+    const calc = calculateCost({ ...input, paintQuantity, paintQuantity2 });
+    return { id, quote_id: quoteId, product_id: Number(input.productId) || null, paint_product_id: paintProductId, paint_product_2_id: paintProduct2Id, extra_product_id: Number(input.extraProductId) || null, description: input.description, unit: input.unit || 'cái', quantity: n(input.quantity),
+      stock_quantity: calc.totalWeight || n(input.stockQuantity), paint_quantity: paintQuantity, paint_weight: calc.paintWeight, paint_quantity_2: paintQuantity2, paint_weight_2: calc.paintWeight2, extra_stock_quantity: Math.max(0, n(input.extraStockQuantity)), length_mm: n(input.lengthMm), width_mm: n(input.widthMm), thickness_mm: n(input.thicknessMm), density: n(input.density) || 7.85,
+      material_price_per_kg: n(input.materialPricePerKg), paint_material_price_per_kg: n(input.paintMaterialPricePerKg), paint_material_price_2_per_kg: n(input.paintMaterialPrice2PerKg), labor_hours: n(input.laborHours), paint_labor_hours: n(input.paintLaborHours), powder_norm_kg_m2: n(input.powderNormKgM2), labor_rate_per_hour: n(input.laborRatePerHour), worker_count: n(input.workerCount) || 1,
       consumables_per_item: n(input.consumablesPerItem), electricity_kwh: n(input.electricityKwh), electricity_rate: n(input.electricityRate), depreciation_per_hour: n(input.depreciationPerHour),
       coating_sides: n(input.coatingSides) || 1, coating_price_per_m2: n(input.coatingPricePerM2), waste_percent: n(input.wastePercent), profit_percent: n(input.profitPercent),
       customer_discount_percent: n(input.customerDiscountPercent), customer_discount_amount: calc.customerDiscount, vat_percent: n(input.vatPercent), cost_before_profit: calc.costBeforeProfit, price_before_vat: calc.priceBeforeVat, vat_amount: calc.vat, line_total: calc.total, formula_json: '{}' };
@@ -50,9 +62,9 @@
       settings: { company_name: 'CÔNG TY TNHH SẢN XUẤT TM-DV MẠNH HÙNG', company_address: 'TP.HCM', company_phone: '0901 234 567', tax_code: '0312345678', invoice_prefix: 'HD', invoice_start: '1', banner_data: 'logo.jpg' },
       customers: [{ id: 1, code: 'DEMO-KH01', name: 'Công ty Nội thất An Phát', phone: '0901 234 567', address: '125 Nguyễn Văn Linh, Quận 7, TP.HCM', tax_code: '0312345678', industrial_zone: 'KCN Tân Tạo', contact_name: 'Trần Thanh An', contact_position: 'Trưởng phòng mua hàng', contact_phone: '0909 111 222', industry: 'Nội thất kim loại', interested_services: 'Gia công, sơn tĩnh điện', assigned_employee_id: 1, active: 1 }],
       suppliers: [{ id: 1, code: 'DEMO-NCC01', name: 'Công ty Thép Việt', phone: '028 3822 6688', address: 'KCN Sóng Thần, Bình Dương', tax_code: '3700123456', active: 1 }],
-      products: [{ id: 1, code: 'DEMO-INOX304', name: 'Tấm inox 304 dày 1mm', unit: 'kg', purchase_price: 45000, sale_price: 65000, vat_rate: 10, active: 1 },
-        { id: 2, code: 'DEMO-SON01', name: 'Sơn tĩnh điện', unit: 'kg', purchase_price: 85000, sale_price: 110000, vat_rate: 10, active: 1 },
-        { id: 3, code: 'DEMO-VTPHU', name: 'Móc treo / vật tư phụ', unit: 'cái', purchase_price: 5000, sale_price: 8000, vat_rate: 10, active: 1 }],
+      products: [{ id: 1, code: 'DEMO-THEP2', name: 'Tấm thép dày 2mm', unit: 'kg', purchase_price: 18000, sale_price: 25000, vat_rate: 10, active: 1 },
+        { id: 2, code: 'DEMO-SON-TRANG', name: 'Bột sơn tĩnh điện trắng', unit: 'kg', purchase_price: 85000, sale_price: 110000, vat_rate: 10, active: 1 },
+        { id: 3, code: 'DEMO-SON-DEN', name: 'Bột sơn tĩnh điện đen', unit: 'kg', purchase_price: 82000, sale_price: 108000, vat_rate: 10, active: 1 }],
       warehouses: [{ id: 1, code: 'KHO01', name: 'Kho chính', address: 'TP.HCM', active: 1 }, { id: 2, code: 'KHO02', name: 'Kho thành phẩm', address: 'TP.HCM', active: 1 }],
       employees: [{ id: 1, code: 'DEMO-NV01', name: 'Nguyễn Văn Minh', phone: '0912 345 678', address: 'TP.HCM', active: 1 }],
       cash_accounts: [{ id: 1, code: 'TM', name: 'Tiền mặt', opening_balance: 22500000, active: 1 }, { id: 2, code: 'VCB', name: 'Vietcombank', opening_balance: 100000000, active: 1 }],
@@ -65,8 +77,8 @@
       customer_care_logs: [], sales_tasks: [], opportunities: [], quote_requests: [], sales_kpis: [],
       counters: { quote: 1, sale: 0, po: 1, request: 1, receipt: 0, stock: 1, cash: 1 }
     };
-    const input = { productId: 1, paintProductId: 2, extraProductId: 3, extraStockQuantity: 4, description: 'Bàn inox gia công 1200 x 600', unit: 'cái', quantity: 2, lengthMm: 1200, widthMm: 600,
-      thicknessMm: 1, density: 7.85, materialPricePerKg: 45000, paintMaterialPricePerKg: 85000, laborHours: 3, paintLaborHours: 2, powderNormKgM2: 0.18, laborRatePerHour: 80000, workerCount: 2, consumablesPerItem: 50000,
+    const input = { productId: 1, paintProductId: 2, paintProduct2Id: 3, paintQuantity: 5, paintQuantity2: 5, description: 'Tấm thép 200 x 200 x 2mm — 5 trắng, 5 đen', unit: 'tấm', quantity: 10, lengthMm: 200, widthMm: 200,
+      thicknessMm: 2, density: 7.85, materialPricePerKg: 18000, paintMaterialPricePerKg: 85000, paintMaterialPrice2PerKg: 82000, laborHours: 3, paintLaborHours: 2, powderNormKgM2: 0.12, laborRatePerHour: 80000, workerCount: 2, consumablesPerItem: 50000,
       electricityKwh: 8, electricityRate: 3500, depreciationPerHour: 25000, coatingSides: 2, coatingPricePerM2: 90000, wastePercent: 5, profitPercent: 20, customerDiscountPercent: 5, vatPercent: 10 };
     db.quotes.push({ id: 1, number: 'BG2026-0001', quote_date: date(), customer_id: 1, warehouse_id: 1, assigned_employee_id: 1, quote_type: 'FULL_SERVICE', shipping_cost: 150000, shipping_vat_percent: 10, shipping_info: 'Giao tại xưởng khách hàng', status: 'SENT', invoice_status: 'PENDING', invoice_number: '', invoice_date: '', invoice_notes: '', notes: 'DEMO: Báo giá mẫu đầy đủ', items: [quoteItem(1, input, 1)] });
     db.purchase_orders.push({ id: 1, number: 'PO2026-0001', order_date: date(), supplier_id: 1, warehouse_id: 1, status: 'DRAFT', notes: 'DEMO: Đơn mua mẫu',
@@ -78,11 +90,11 @@
     db.print_template_types = types;
     Object.keys(types).forEach((type, index) => db.print_templates.push({ id: index + 1, name: types[type], document_type: type, content: '<div class="brand-images">{{banner}}{{watermark}}</div><h1>{{title}}</h1><div class="meta">Số: {{number}} · Ngày: {{date}}</div>{{items_table}}<div class="totals"><div class="grand">TỔNG CỘNG: {{total}} đồng</div></div><div class="notes">{{notes}}</div>', layout_json: '', is_default: 1 }));
     db.stock_documents.push({ id: 1, number: 'NH2026-0001', document_date: date(), type: 'DIRECT_RECEIPT', warehouse_from_id: null, warehouse_to_id: 1,
-      customer_id: null, supplier_id: 1, notes: 'DEMO: Tồn đầu', status: 'POSTED', items: [{ id: 1, product_id: 1, quantity: 200, unit_price: 45000, vat_percent: 10 }, { id: 2, product_id: 2, quantity: 50, unit_price: 85000, vat_percent: 10 }, { id: 3, product_id: 3, quantity: 40, unit_price: 5000, vat_percent: 10 }] });
+      customer_id: null, supplier_id: 1, notes: 'DEMO: Tồn đầu', status: 'POSTED', items: [{ id: 1, product_id: 1, quantity: 200, unit_price: 18000, vat_percent: 10 }, { id: 2, product_id: 2, quantity: 50, unit_price: 85000, vat_percent: 10 }, { id: 3, product_id: 3, quantity: 50, unit_price: 82000, vat_percent: 10 }] });
     db.stock_documents[0].total = total(db.stock_documents[0].items);
-    db.movements.push({ id: 1, movement_date: date(), warehouse_id: 1, product_id: 1, quantity: 200, unit_cost: 45000, source_type: 'DIRECT_RECEIPT', source_id: 1, note: 'NH2026-0001' },
+    db.movements.push({ id: 1, movement_date: date(), warehouse_id: 1, product_id: 1, quantity: 200, unit_cost: 18000, source_type: 'DIRECT_RECEIPT', source_id: 1, note: 'NH2026-0001' },
       { id: 2, movement_date: date(), warehouse_id: 1, product_id: 2, quantity: 50, unit_cost: 85000, source_type: 'DIRECT_RECEIPT', source_id: 1, note: 'NH2026-0001' },
-      { id: 3, movement_date: date(), warehouse_id: 1, product_id: 3, quantity: 40, unit_cost: 5000, source_type: 'DIRECT_RECEIPT', source_id: 1, note: 'NH2026-0001' });
+      { id: 3, movement_date: date(), warehouse_id: 1, product_id: 3, quantity: 50, unit_cost: 82000, source_type: 'DIRECT_RECEIPT', source_id: 1, note: 'NH2026-0001' });
     db.cash_transactions.push({ id: 1, number: 'PT2026-0001', transaction_date: date(), type: 'OTHER_RECEIPT', account_id: 1, target_account_id: null, customer_id: null,
       supplier_id: null, employee_id: null, category_id: 1, amount: 2000000, reference: 'DEMO-THU01', notes: 'Khoản thu mẫu' });
     db.customer_care_logs.push({ id: 1, customer_id: 1, employee_id: 1, care_date: date(), care_type: 'CALL', content: 'Đã gọi xác nhận nhu cầu sơn tĩnh điện', next_action_date: date() });
@@ -174,7 +186,7 @@
     id = Number(id); const checks = {
       customers: db.quotes.some(row => row.customer_id === id) || db.sales.some(row => row.customer_id === id) || db.stock_documents.some(row => row.customer_id === id) || db.cash_transactions.some(row => row.customer_id === id),
       suppliers: db.purchase_orders.some(row => row.supplier_id === id) || db.stock_documents.some(row => row.supplier_id === id) || db.cash_transactions.some(row => row.supplier_id === id),
-      products: [...db.quotes.flatMap(row => row.items), ...db.purchase_orders.flatMap(row => row.items), ...db.stock_documents.flatMap(row => row.items)].some(row => row.product_id === id),
+      products: [...db.quotes.flatMap(row => row.items), ...db.purchase_orders.flatMap(row => row.items), ...db.stock_documents.flatMap(row => row.items)].some(row => [row.product_id, row.paint_product_id, row.paint_product_2_id, row.extra_product_id].includes(id)),
       warehouses: db.quotes.some(row => row.warehouse_id === id) || db.purchase_orders.some(row => row.warehouse_id === id) || db.movements.some(row => row.warehouse_id === id),
       employees: db.cash_transactions.some(row => row.employee_id === id) || db.purchase_requests.some(row => row.employee_id === id), cash_accounts: db.cash_transactions.some(row => row.account_id === id || row.target_account_id === id),
       income_expense_categories: db.cash_transactions.some(row => row.category_id === id)
@@ -236,7 +248,7 @@
     const sourceItems = doc.items || [{ description: doc.notes || doc.reference, quantity: 1, line_total: doc.amount }];
     const rows = sourceItems.map((item, index) => `<tr><td>${index + 1}</td><td class="left">${htmlEscape(item.description || item.product_name || item.item_name)}</td><td>${htmlEscape(item.unit || '')}</td><td>${n(item.quantity) || 1}</td><td>${formatMoney(item.line_total || item.quantity * (item.unit_price || item.estimated_unit_price) || doc.amount)}</td></tr>`).join('');
     const itemsTable = `<table><thead><tr><th>STT</th><th>Nội dung</th><th>ĐVT</th><th>SL</th><th>Thành tiền</th></tr></thead><tbody>${rows}</tbody></table>`;
-    const documentType = type === 'quote' ? (doc.quote_type === 'PAINT_ONLY' ? 'QUOTE_PAINT' : doc.quote_type === 'CUSTOMER_MATERIAL' ? 'QUOTE_PROCESSING' : 'QUOTE_FULL') : type === 'sale' ? 'SALE' : type === 'po' ? 'PURCHASE_ORDER' : type === 'purchase_request' ? 'PURCHASE_REQUEST' : doc.type === 'ADVANCE' ? 'ADVANCE_REQUEST' : 'ADVANCE_SETTLEMENT';
+    const documentType = type === 'quote' ? (doc.quote_type === 'PAINT_ONLY' ? 'QUOTE_PAINT' : ['CUSTOMER_MATERIAL', 'PROCESSING_ONLY'].includes(doc.quote_type) ? 'QUOTE_PROCESSING' : 'QUOTE_FULL') : type === 'sale' ? 'SALE' : type === 'po' ? 'PURCHASE_ORDER' : type === 'purchase_request' ? 'PURCHASE_REQUEST' : doc.type === 'ADVANCE' ? 'ADVANCE_REQUEST' : 'ADVANCE_SETTLEMENT';
     const template = db.print_templates.find(row => row.document_type === documentType && row.is_default) || db.print_templates.find(row => row.document_type === documentType);
     const titles = { QUOTE_FULL: 'BÁO GIÁ', QUOTE_PROCESSING: 'BÁO GIÁ GIA CÔNG', QUOTE_PAINT: 'BÁO GIÁ SƠN TĨNH ĐIỆN', SALE: 'PHIẾU XUẤT BÁN', PURCHASE_ORDER: 'ĐƠN ĐẶT HÀNG', PURCHASE_REQUEST: 'PHIẾU ĐỀ NGHỊ MUA VẬT TƯ, THIẾT BỊ', ADVANCE_REQUEST: 'GIẤY ĐỀ NGHỊ TẠM ỨNG', ADVANCE_SETTLEMENT: 'GIẤY THANH TOÁN TIỀN TẠM ỨNG' };
     const sum = sourceItems.reduce((value, item) => value + n(item.line_total || item.quantity * (item.unit_price || item.estimated_unit_price)), 0) || n(doc.amount);
@@ -281,10 +293,11 @@
     listQuotes: async () => copy(listQuotes()), getQuote: async id => copy(getQuote(id)), createQuote: async payload => saveQuote(payload), updateQuote: async (id, payload) => saveQuote(payload, id),
     setQuoteStatus: async (id, status) => { const row = db.quotes.find(item => item.id === Number(id)); if (!row || row.status === 'CONVERTED') throw new Error('Không thể đổi trạng thái.'); row.status = status; },
     setQuoteInvoice: async (id, payload) => setQuoteInvoice(id, payload),
-    convertQuote: async id => { const quote = getQuote(id); if (quote.status === 'CONVERTED') throw new Error('Báo giá đã được chuyển.'); const needs = new Map(); quote.items.forEach(item => { if (item.product_id) needs.set(item.product_id, (needs.get(item.product_id) || 0) + n(item.stock_quantity)); if (item.paint_product_id) needs.set(item.paint_product_id, (needs.get(item.paint_product_id) || 0) + n(item.paint_weight)); if (item.extra_product_id) needs.set(item.extra_product_id, (needs.get(item.extra_product_id) || 0) + n(item.extra_stock_quantity)); }); for (const [productId, quantity] of needs) if (balance(productId, quote.warehouse_id) < quantity) throw new Error(`Không đủ tồn kho cho ${find('products', productId)?.name}.`);
+    convertQuote: async id => { const quote = getQuote(id); if (quote.status === 'CONVERTED') throw new Error('Báo giá đã được chuyển.'); const needs = new Map(); quote.items.forEach(item => { if (item.product_id) needs.set(item.product_id, (needs.get(item.product_id) || 0) + n(item.stock_quantity)); if (item.paint_product_id) needs.set(item.paint_product_id, (needs.get(item.paint_product_id) || 0) + n(item.paint_weight)); if (item.paint_product_2_id) needs.set(item.paint_product_2_id, (needs.get(item.paint_product_2_id) || 0) + n(item.paint_weight_2)); if (item.extra_product_id) needs.set(item.extra_product_id, (needs.get(item.extra_product_id) || 0) + n(item.extra_stock_quantity)); }); for (const [productId, quantity] of needs) if (balance(productId, quote.warehouse_id) < quantity) throw new Error(`Không đủ tồn kho cho ${find('products', productId)?.name}.`);
       const sale = { id: nextId(db.sales), number: numberFor('sale', 'BH'), sale_date: date(), quote_id: quote.id, customer_id: quote.customer_id, warehouse_id: quote.warehouse_id, total: quote.total, status: 'POSTED' }; db.sales.push(sale);
       quote.items.forEach(item => { if (item.product_id && item.stock_quantity > 0) db.movements.push({ id: nextId(db.movements), movement_date: date(), warehouse_id: quote.warehouse_id, product_id: item.product_id, quantity: -item.stock_quantity, unit_cost: item.cost_before_profit / Math.max(1, item.stock_quantity), source_type: 'SALE', source_id: sale.id, note: sale.number }); });
       quote.items.forEach(item => { if (item.paint_product_id && item.paint_weight > 0) db.movements.push({ id: nextId(db.movements), movement_date: date(), warehouse_id: quote.warehouse_id, product_id: item.paint_product_id, quantity: -item.paint_weight, unit_cost: find('products', item.paint_product_id)?.purchase_price || 0, source_type: 'SALE', source_id: sale.id, note: sale.number }); });
+      quote.items.forEach(item => { if (item.paint_product_2_id && item.paint_weight_2 > 0) db.movements.push({ id: nextId(db.movements), movement_date: date(), warehouse_id: quote.warehouse_id, product_id: item.paint_product_2_id, quantity: -item.paint_weight_2, unit_cost: find('products', item.paint_product_2_id)?.purchase_price || 0, source_type: 'SALE', source_id: sale.id, note: sale.number }); });
       quote.items.forEach(item => { if (item.extra_product_id && item.extra_stock_quantity > 0) db.movements.push({ id: nextId(db.movements), movement_date: date(), warehouse_id: quote.warehouse_id, product_id: item.extra_product_id, quantity: -item.extra_stock_quantity, unit_cost: find('products', item.extra_product_id)?.purchase_price || 0, source_type: 'SALE', source_id: sale.id, note: sale.number }); });
       db.quotes.find(row => row.id === quote.id).status = 'CONVERTED'; return { id: sale.id, number: sale.number }; },
     deleteQuote: async id => { const row = db.quotes.find(item => item.id === Number(id)); if (row?.status === 'CONVERTED') throw new Error('Hãy xóa phiếu xuất trước.'); db.quotes = db.quotes.filter(item => item.id !== Number(id)); },
