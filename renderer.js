@@ -94,12 +94,17 @@ function enhanceSearchableSelects(root = document) {
     input.setAttribute('aria-label', select.getAttribute('aria-label') || select.closest('.field')?.querySelector('label')?.textContent || 'Tìm và chọn');
     const toggle = document.createElement('button');
     toggle.type = 'button'; toggle.className = 'search-select-toggle'; toggle.setAttribute('aria-label', 'Mở danh sách'); toggle.textContent = '▾';
+    const detail = document.createElement('small'); detail.className = 'search-select-detail';
     const menu = document.createElement('div'); menu.className = 'search-select-menu';
-    select.before(shell); shell.append(input, toggle, select, menu); select.hidden = true;
+    select.before(shell); shell.append(input, toggle, detail, select, menu); select.hidden = true;
     const sync = () => {
       const selected = select.selectedOptions[0];
-      input.value = select.value && selected ? selected.textContent.trim() : '';
-      input.title = input.value;
+      const fullText = select.value && selected ? selected.textContent.trim() : '';
+      const [primary, ...details] = fullText.split(' · ');
+      input.value = primary || '';
+      input.title = fullText;
+      detail.textContent = details.length ? fullText : '';
+      detail.hidden = !details.length;
       input.placeholder = [...select.options].find(option => !option.value)?.textContent.trim() || 'Gõ để tìm hoặc bấm để chọn';
     };
     const close = () => { shell.classList.remove('open'); menu.innerHTML = ''; };
