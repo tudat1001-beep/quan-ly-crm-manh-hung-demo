@@ -12,4 +12,5 @@ Bản demo tĩnh dành cho khách hàng dùng thử trên GitHub Pages.
 - Có CRM Sale B2B, ba loại báo giá, tính bột sơn/vận chuyển và tự trừ kho khi chuyển xuất bán.
 - Mọi bảng có lọc nhanh, số dòng và tổng các cột số theo kết quả đang lọc.
 - Mỗi dòng báo giá có thể trừ cùng lúc vật tư chính, bột sơn và vật tư phụ.
+- Các ô chọn cho phép gõ tìm hoặc mở dropdown, kèm thông tin chi tiết để đối chiếu trước khi chọn.
 

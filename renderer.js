@@ -80,9 +80,70 @@ function toast(message, error = false) {
   toast.timer = setTimeout(() => node.className = 'toast', 3200);
 }
 
-function openModal(html) { $('#modal-body').innerHTML = html; $('#modal').classList.remove('hidden'); attachTableTools($('#modal-body')); }
+function searchableText(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('vi'); }
+
+function enhanceSearchableSelects(root = document) {
+  $$('select:not([data-search-ready])', root).forEach(select => {
+    select.dataset.searchReady = '1';
+    const required = select.required;
+    select.required = false;
+    const shell = document.createElement('div');
+    shell.className = 'search-select';
+    const input = document.createElement('input');
+    input.type = 'search'; input.autocomplete = 'off'; input.className = 'search-select-input'; input.required = required;
+    input.setAttribute('aria-label', select.getAttribute('aria-label') || select.closest('.field')?.querySelector('label')?.textContent || 'Tìm và chọn');
+    const toggle = document.createElement('button');
+    toggle.type = 'button'; toggle.className = 'search-select-toggle'; toggle.setAttribute('aria-label', 'Mở danh sách'); toggle.textContent = '▾';
+    const menu = document.createElement('div'); menu.className = 'search-select-menu';
+    select.before(shell); shell.append(input, toggle, select, menu); select.hidden = true;
+    const sync = () => {
+      const selected = select.selectedOptions[0];
+      input.value = select.value && selected ? selected.textContent.trim() : '';
+      input.title = input.value;
+      input.placeholder = [...select.options].find(option => !option.value)?.textContent.trim() || 'Gõ để tìm hoặc bấm để chọn';
+    };
+    const close = () => { shell.classList.remove('open'); menu.innerHTML = ''; };
+    const render = (query = '') => {
+      const key = searchableText(query);
+      const matches = [...select.options].filter(option => !key || (option.value && searchableText(option.textContent).includes(key)));
+      menu.innerHTML = matches.length ? matches.map(option => `<button type="button" data-combo-value="${esc(option.value)}" title="${esc(option.textContent.trim())}">${esc(option.textContent.trim())}</button>`).join('') : '<small>Không tìm thấy dữ liệu phù hợp</small>';
+      shell.classList.add('open');
+    };
+    input.addEventListener('focus', () => { input.select(); render(''); });
+    input.addEventListener('input', () => render(input.value));
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { close(); sync(); input.blur(); }
+      if (event.key === 'Enter' && shell.classList.contains('open')) { const first = $('button[data-combo-value]', menu); if (first) { event.preventDefault(); first.click(); } }
+    });
+    input.addEventListener('blur', () => setTimeout(() => { close(); sync(); }, 120));
+    toggle.addEventListener('mousedown', event => event.preventDefault());
+    toggle.addEventListener('click', () => { input.focus(); input.select(); render(''); });
+    menu.addEventListener('mousedown', event => event.preventDefault());
+    menu.addEventListener('click', event => {
+      const option = event.target.closest('[data-combo-value]');
+      if (!option) return;
+      select.value = option.dataset.comboValue;
+      sync(); close(); input.blur(); select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    select.addEventListener('change', sync);
+    queueMicrotask(sync);
+  });
+}
+
+function openModal(html) { $('#modal-body').innerHTML = html; $('#modal').classList.remove('hidden'); attachTableTools($('#modal-body')); enhanceSearchableSelects($('#modal-body')); }
 function closeModal() { $('#modal').classList.add('hidden'); $('#modal-body').innerHTML = ''; }
-function options(rows, selected = '') { return rows.map(row => `<option value="${row.id}" ${String(row.id) === String(selected) ? 'selected' : ''}>${esc(row.code)} — ${esc(row.name)}</option>`).join(''); }
+function optionLabel(row) {
+  const details = [];
+  if (row.unit) details.push(`ĐVT: ${row.unit}`);
+  if (row.purchase_price != null) details.push(`Giá nhập: ${money(row.purchase_price)} ₫`);
+  if (row.contact_name) details.push(`Liên hệ: ${row.contact_name}`);
+  if (row.contact_phone || row.phone) details.push(`SĐT: ${row.contact_phone || row.phone}`);
+  if (row.industrial_zone) details.push(row.industrial_zone);
+  if (row.tax_code) details.push(`MST: ${row.tax_code}`);
+  if (row.address && !row.industrial_zone) details.push(row.address);
+  return `${row.code || ''} — ${row.name || ''}${details.length ? ` · ${details.join(' · ')}` : ''}`;
+}
+function options(rows, selected = '') { return rows.map(row => `<option value="${row.id}" ${String(row.id) === String(selected) ? 'selected' : ''}>${esc(optionLabel(row))}</option>`).join(''); }
 function statusLabel(status) { return ({ DRAFT: 'Nháp', SENT: 'Đã gửi', WON: 'Đã chốt', CONVERTED: 'Đã xuất', CANCELLED: 'Đã hủy', RECEIVED: 'Đã nhận', POSTED: 'Đã ghi sổ' })[status] || status; }
 function badge(status) { return `<span class="badge ${status}">${statusLabel(status)}</span>`; }
 const quoteTypeLabels = { FULL_SERVICE: 'Vật tư + gia công + sơn', CUSTOMER_MATERIAL: 'Gia công + sơn', PAINT_ONLY: 'Chỉ sơn tĩnh điện' };
@@ -347,7 +408,7 @@ async function showQuoteForm(id) {
 }
 
 function lineData(node) {
-  return Object.fromEntries($$('input,select', node).map(input => [input.name, input.type === 'number' || input.classList.contains('money-input') ? number(input.value) : input.value]));
+  return Object.fromEntries($$('input,select', node).filter(input => input.name).map(input => [input.name, input.type === 'number' || input.classList.contains('money-input') ? number(input.value) : input.value]));
 }
 
 async function updateQuoteLine(node) {
@@ -658,16 +719,16 @@ document.addEventListener('click', async event => {
       state.masterRows = await window.crm.listMaster('customers');
       return showMasterForm('customers', Number(target.dataset.id));
     }
-    if (target.id === 'add-quote-line') { $('#quote-lines').insertAdjacentHTML('beforeend', quoteLine()); return updateQuoteLine($$('.quote-line').at(-1)); }
+    if (target.id === 'add-quote-line') { $('#quote-lines').insertAdjacentHTML('beforeend', quoteLine()); const line = $$('.quote-line').at(-1); enhanceSearchableSelects(line); return updateQuoteLine(line); }
     if (target.id === 'new-po') return showPurchaseOrderForm();
     if (target.dataset.poDetail !== undefined) return showPurchaseOrderForm(Number(target.dataset.id));
-    if (target.id === 'add-po-line') return $('#po-lines').insertAdjacentHTML('beforeend', poLine());
+    if (target.id === 'add-po-line') { $('#po-lines').insertAdjacentHTML('beforeend', poLine()); return enhanceSearchableSelects($$('.po-line').at(-1)); }
     if (target.id === 'new-purchase-request') return showPurchaseRequestForm();
     if (target.dataset.purchaseRequestEdit !== undefined) return showPurchaseRequestForm(Number(target.dataset.id));
-    if (target.id === 'add-purchase-request-line') return $('#purchase-request-lines').insertAdjacentHTML('beforeend', purchaseRequestLine());
+    if (target.id === 'add-purchase-request-line') { $('#purchase-request-lines').insertAdjacentHTML('beforeend', purchaseRequestLine()); return enhanceSearchableSelects($$('.purchase-request-line').at(-1)); }
     if (target.dataset.purchaseRequestDelete !== undefined) { if (!confirm('Xóa phiếu đề nghị mua này?')) return; await window.crm.deletePurchaseRequest(Number(target.dataset.id)); toast('Đã xóa phiếu đề nghị.'); return navigate('purchase-requests'); }
     if (target.id === 'new-stock-document') return showStockDocumentForm();
-    if (target.id === 'add-stock-document-line') return $('#stock-document-lines').insertAdjacentHTML('beforeend', stockDocumentLine());
+    if (target.id === 'add-stock-document-line') { $('#stock-document-lines').insertAdjacentHTML('beforeend', stockDocumentLine()); return enhanceSearchableSelects($$('.stock-document-line').at(-1)); }
     if (target.id === 'new-cash-transaction') return showCashTransactionForm();
     if (target.id === 'new-invoice-file') return showInvoiceFileForm();
     if (target.id === 'pick-invoice-file') { state.selectedInvoiceFile = await window.crm.pickInvoiceFile(); if (state.selectedInvoiceFile) $('#invoice-file-name').textContent = state.selectedInvoiceFile.name; return; }
