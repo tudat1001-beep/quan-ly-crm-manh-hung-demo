@@ -272,7 +272,7 @@
 
   window.crm = {
     bootstrap: async () => copy(bootstrap()), calculateCost: async input => calculateCost(input),
-    listMaster: async type => { if (!masterTypes.includes(type)) throw new Error('Danh mục không hợp lệ.'); return copy(active(type).sort((a, b) => a.name.localeCompare(b.name))); },
+    listMaster: async type => { if (!masterTypes.includes(type)) throw new Error('Danh mục không hợp lệ.'); const rows = active(type).map(row => type === 'customers' ? { ...row, assigned_employee_name: find('employees', row.assigned_employee_id)?.name || '' } : row); return copy(rows.sort((a, b) => a.name.localeCompare(b.name))); },
     saveMaster: async (type, record) => { if (!masterTypes.includes(type) || !record.code?.trim() || !record.name?.trim()) throw new Error('Mã và tên không được để trống.'); let row = record.id ? find(type, record.id) : null;
       if (!row) { row = { id: nextId(db[type]), active: 1 }; db[type].push(row); } Object.assign(row, copy(record)); for (const key of ['purchase_price', 'sale_price', 'vat_rate', 'opening_balance', 'affects_profit']) if (key in row) row[key] = n(row[key]); if ('assigned_employee_id' in row) row.assigned_employee_id = n(row.assigned_employee_id) || null; return row.id; },
     deleteMaster: async (type, id) => { if (masterUsed(type, id)) throw new Error('Dữ liệu đã được dùng trong chứng từ nên không thể xóa.'); db[type] = db[type].filter(row => row.id !== Number(id)); },
