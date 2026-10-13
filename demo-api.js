@@ -13,11 +13,12 @@
     const quantity = Math.max(0, n(input.quantity));
     const totalWeight = weightEach * quantity;
     const materialCost = totalWeight * n(input.materialPricePerKg);
-    const laborCost = n(input.laborHours) * n(input.laborRatePerHour) * Math.max(1, n(input.workerCount));
-    const paintLaborCost = n(input.paintLaborHours) * n(input.laborRatePerHour) * Math.max(1, n(input.workerCount));
+    const serviceQuantity = Math.max(1, quantity);
+    const laborCost = n(input.laborHours) * serviceQuantity * n(input.laborRatePerHour) * Math.max(1, n(input.workerCount));
+    const paintLaborCost = n(input.paintLaborHours) * serviceQuantity * n(input.laborRatePerHour) * Math.max(1, n(input.workerCount));
     const consumablesCost = n(input.consumablesPerItem) * quantity;
-    const electricityCost = n(input.electricityKwh) * n(input.electricityRate);
-    const depreciationCost = n(input.depreciationPerHour) * n(input.laborHours);
+    const electricityCost = n(input.electricityKwh) * serviceQuantity * n(input.electricityRate);
+    const depreciationCost = n(input.depreciationPerHour) * n(input.laborHours) * serviceQuantity;
     const hasPaintAllocation = n(input.paintQuantity) > 0 || n(input.paintQuantity2) > 0;
     const paintQuantity = hasPaintAllocation ? Math.max(0, n(input.paintQuantity)) : quantity;
     const paintQuantity2 = Math.max(0, n(input.paintQuantity2));
@@ -275,7 +276,7 @@
     const month = date().slice(0, 7);
     const open = db.opportunities.filter(row => !['WON', 'LOST'].includes(row.stage));
     const kpis = salesKpis().filter(row => row.period === month).map(row => ({ ...row,
-      actual_customers: db.customers.filter(customer => customer.assigned_employee_id === row.employee_id).length,
+      actual_customers: new Set(db.quotes.filter(quote => quote.assigned_employee_id === row.employee_id && ['WON', 'CONVERTED'].includes(quote.status) && quote.quote_date.startsWith(month)).map(quote => quote.customer_id)).size,
       actual_calls: db.customer_care_logs.filter(log => log.employee_id === row.employee_id && log.care_type === 'CALL' && log.care_date.startsWith(month)).length,
       actual_meetings: db.customer_care_logs.filter(log => log.employee_id === row.employee_id && log.care_type === 'MEETING' && log.care_date.startsWith(month)).length,
       actual_revenue: db.sales.filter(sale => db.quotes.find(quote => quote.id === sale.quote_id)?.assigned_employee_id === row.employee_id && sale.sale_date.startsWith(month)).reduce((sum, sale) => sum + n(sale.total), 0) }));
@@ -307,6 +308,7 @@
     receivePurchaseOrder: async id => { const po = db.purchase_orders.find(row => row.id === Number(id)); if (!po || po.status === 'RECEIVED') throw new Error('Đơn đã được nhận.'); po.status = 'RECEIVED'; po.items.forEach(item => { item.received_quantity = item.quantity; db.movements.push({ id: nextId(db.movements), movement_date: date(), warehouse_id: po.warehouse_id, product_id: item.product_id, quantity: item.quantity, unit_cost: item.unit_price, source_type: 'RECEIPT', source_id: po.id, note: po.number }); }); return { id: po.id, number: numberFor('receipt', 'NH') }; },
     deletePurchaseOrder: async id => { db.movements = db.movements.filter(row => !(row.source_type === 'RECEIPT' && row.source_id === Number(id))); db.purchase_orders = db.purchase_orders.filter(row => row.id !== Number(id)); },
     listPurchaseRequests: async () => copy(listPurchaseRequests()), getPurchaseRequest: async id => copy(getPurchaseRequest(id)), savePurchaseRequest: async (id, payload) => savePurchaseRequest(id, payload),
+    setPurchaseRequestStatus: async (id, status) => { const row = db.purchase_requests.find(item => item.id === Number(id)); if (!row) throw new Error('Không tìm thấy phiếu đề nghị mua.'); const transitions = { DRAFT: ['SUBMITTED'], REJECTED: ['SUBMITTED'], SUBMITTED: ['APPROVED', 'REJECTED'], APPROVED: [] }; if (!(transitions[row.status || 'DRAFT'] || []).includes(status)) throw new Error('Không thể chuyển phiếu sang trạng thái này.'); row.status = status; return { id: row.id, status }; },
     deletePurchaseRequest: async id => { db.purchase_requests = db.purchase_requests.filter(row => row.id !== Number(id)); },
     getInventory: async () => ({
       inventory: copy(db.products.flatMap(product => db.warehouses.map(warehouse => ({

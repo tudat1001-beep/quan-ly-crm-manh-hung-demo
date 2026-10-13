@@ -43,7 +43,7 @@
 <body>
   <header>
     <h1>Hướng dẫn sử dụng Quản lý CRM Mạnh Hùng</h1>
-    <p>Phiên bản desktop cục bộ 0.8.4 · Báo giá, kho, mua bán, thu chi và CRM Sale B2B</p>
+    <p>Phiên bản desktop cục bộ 0.8.5 · Báo giá, kho, mua bán, thu chi và CRM Sale B2B</p>
   </header>
   <div class="toolbar"><button type="button" onclick="window.print()">In / Lưu PDF hướng dẫn</button></div>
   <div class="layout">
@@ -66,7 +66,7 @@
       <section id="bat-dau">
         <h2>1. Bắt đầu</h2>
         <ol>
-          <li>Cài ứng dụng bằng file <strong>Quan ly CRM Manh Hung Setup 0.8.4.exe</strong>.</li>
+          <li>Cài ứng dụng bằng file <strong>Quan ly CRM Manh Hung Setup 0.8.5.exe</strong>.</li>
           <li>Mở ứng dụng từ màn hình Desktop hoặc Start Menu. Ứng dụng chạy cục bộ, không mở cổng mạng.</li>
           <li>Vào <strong>Cài đặt & sao lưu</strong>, nhập thông tin công ty, tiền tố hóa đơn và số hóa đơn bắt đầu.</li>
           <li>Nếu cần kiểm tra nhanh, bấm <strong>Tạo dữ liệu mẫu</strong>.</li>
@@ -94,7 +94,7 @@
         <div class="step"><b>1</b><div>Vào <strong>Báo giá</strong> → <strong>Lập báo giá mới</strong>.</div></div>
         <div class="step"><b>2</b><div>Chọn ngày, khách hàng, kho xuất, loại báo giá và nhân viên Sale.</div></div>
         <div class="step"><b>3</b><div>Nhập phí vận chuyển, VAT vận chuyển và điều khoản nếu có.</div></div>
-        <div class="step"><b>4</b><div>Ở mỗi dòng, chọn vật tư chính, sơn màu 1, sơn màu 2; sau đó nhập tên sản phẩm, kích thước và số lượng.</div></div>
+        <div class="step"><b>4</b><div>Ở mỗi dòng, chọn vật tư chính, sơn màu 1, sơn màu 2; sau đó nhập tên sản phẩm, kích thước và số lượng. Nếu dùng hai màu, bấm <strong>Chia đều 2 màu</strong> hoặc sửa số lượng riêng của từng màu.</div></div>
         <div class="step"><b>5</b><div>Bấm <strong>Chi phí & công thức — bấm để mở</strong> để nhập giá vật liệu, nhân công, định mức sơn, tiêu hao, điện, khấu hao, lợi nhuận và VAT.</div></div>
         <div class="step"><b>6</b><div>Kiểm tra khối lượng và thành tiền luôn hiển thị cuối dòng, rồi bấm <strong>Lưu báo giá</strong>.</div></div>
 
@@ -103,6 +103,7 @@
         <p>Kích thước nhập bằng mm; hệ thống tự quy đổi theo công thức đã cài.</p>
         <p class="formula">Khối lượng sơn từng màu = diện tích 1 sản phẩm × số mặt sơn × số lượng của màu × định mức kg/m²</p>
         <p class="formula">Giá vốn = vật liệu + sơn + nhân công + tiêu hao + điện + khấu hao + chi phí sơn + hao hụt</p>
+        <p>Giờ gia công, giờ sơn và điện được nhập <strong>theo một sản phẩm</strong>; hệ thống tự nhân với số lượng để tổng tiền đổi đúng khi tăng/giảm số lượng.</p>
         <p>Hệ thống cộng lợi nhuận và VAT để ra thành tiền. Chiết khấu khách chỉ dùng theo dõi nội bộ, không trừ vào tổng báo giá.</p>
       </section>
 
@@ -112,7 +113,7 @@
         <ol>
           <li>Chọn <strong>Vật tư chính</strong>: mã tấm thép 2 mm.</li>
           <li>Chọn <strong>Sơn màu 1</strong>: mã bột sơn trắng; nhập <strong>SL màu 1 = 5</strong>.</li>
-          <li>Chọn <strong>Sơn màu 2</strong>: mã bột sơn đen; nhập <strong>SL màu 2 = 5</strong>.</li>
+          <li>Chọn <strong>Sơn màu 2</strong>: mã bột sơn đen; bấm <strong>Chia đều 2 màu</strong> để hệ thống điền 5 và 5, hoặc tự nhập số lượng từng màu.</li>
           <li>Nhập dài 200, rộng 200, dày 2, số lượng 10.</li>
           <li>Mở phần chi phí, nhập số mặt sơn = 2, định mức bột sơn và giá/kg riêng của từng màu.</li>
         </ol>
@@ -158,7 +159,8 @@
       <section id="mau-in">
         <h2>8. Mẫu in khổ A5 dọc</h2>
         <ol>
-          <li>Vào <strong>Mẫu in</strong>, chọn đúng loại chứng từ.</li>
+          <li>Vào <strong>Mẫu in</strong>. Muốn nhập nội dung thật, bấm nút <strong>Nhập tại…</strong> ở đúng dòng để chuyển đến phân hệ nghiệp vụ.</li>
+          <li>Mẫu in chỉ chỉnh bố cục. Tại đây chọn đúng loại chứng từ rồi bấm <strong>Sửa bố cục / Xem trước</strong>.</li>
           <li>Bật/tắt các khối, sửa nội dung và bấm biến trong danh sách để chèn.</li>
           <li>Kiểm tra bản xem trước bên phải; banner dùng chung luôn giữ đủ tỷ lệ ảnh.</li>
           <li>Lưu mẫu, quay lại chứng từ và bấm <strong>Xem/In</strong> hoặc <strong>PDF</strong>.</li>
@@ -170,11 +172,11 @@
         <h2>9. Các phân hệ khác</h2>
         <ul>
           <li><strong>Đơn đặt hàng:</strong> lập đơn mua, nhận toàn bộ để tăng tồn kho.</li>
-          <li><strong>Đề nghị mua:</strong> ghi nhận vật tư, quy cách, bộ phận và mục đích mua.</li>
+          <li><strong>Đề nghị mua:</strong> ghi nhận vật tư, quy cách, bộ phận và mục đích mua; sau đó dùng luồng <strong>Trình duyệt → Duyệt/Từ chối</strong>.</li>
           <li><strong>Nhập xuất kho:</strong> nhập mua, bán trực tiếp, chuyển kho, trả nhà cung cấp và khách trả hàng.</li>
           <li><strong>Thu chi & quỹ:</strong> thu khách, chi nhà cung cấp, chuyển quỹ, tạm ứng và hoàn ứng.</li>
           <li><strong>Công nợ:</strong> theo dõi phải thu khách hàng và phải trả nhà cung cấp.</li>
-          <li><strong>CRM Sale B2B:</strong> chăm sóc khách, công việc, cơ hội, RFQ và KPI nhân viên Sale.</li>
+          <li><strong>CRM Sale B2B:</strong> danh sách tổng hợp khách hàng, lọc theo Sale, lên lịch tuần này/tuần tới, liên kết cơ hội và báo giá. KPI khách hàng chỉ ghi nhận khi báo giá đã Win hoặc đã xuất bán.</li>
           <li><strong>Bảng dữ liệu:</strong> gõ vào ô “Lọc nhanh”; số dòng và tổng cột số tự cập nhật theo kết quả lọc.</li>
         </ul>
       </section>
@@ -210,6 +212,6 @@
       </section>
     </main>
   </div>
-  <footer>Quản lý CRM Mạnh Hùng · Hướng dẫn sử dụng phiên bản 0.8.4</footer>
+  <footer>Quản lý CRM Mạnh Hùng · Hướng dẫn sử dụng phiên bản 0.8.5</footer>
 </body>
 </html>

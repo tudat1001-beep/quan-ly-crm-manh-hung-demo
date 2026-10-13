@@ -80,6 +80,11 @@ tr:last-child td { border-bottom: 0; }
 .badge.WON, .badge.RECEIVED { background: #def7ec; color: #08745b; }
 .badge.CONVERTED, .badge.POSTED { background: #e8e5ff; color: #5542a6; }
 .badge.CANCELLED { background: #fee4e2; color: #a12620; }
+.badge.SUBMITTED { background: #e6f1ff; color: #1f5f99; }
+.badge.APPROVED { background: #def7ec; color: #08745b; }
+.badge.REJECTED { background: #fee4e2; color: #a12620; }
+.cell-detail { display: block; margin-top: 2px; color: var(--muted); font-size: 9px; }
+.compact-filter { width: min(310px, 42vw); }
 
 .modal { position: fixed; inset: 0; z-index: 30; display: flex; justify-content: center; align-items: flex-start; padding: 14px; overflow: auto; }
 .modal.hidden { display: none; }
@@ -193,10 +198,15 @@ tr:last-child td { border-bottom: 0; }
 .quote-row-9 { grid-template-columns: repeat(9, minmax(92px, 1fr)); }
 .quote-row-10 { grid-template-columns: repeat(10, minmax(86px, 1fr)); }
 .stock-deductions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(260px, 1fr)); gap: 6px; padding: 5px; border: 1px solid #b8c9c1; border-radius: 4px; background: #f1f8f5; }
-.stock-deductions > label { grid-column: 1 / -1; }
-.stock-deduction-row { display: grid; grid-template-columns: minmax(150px, 1fr) 78px; align-items: center; gap: 5px; margin-top: 4px; }
+.stock-deductions-head { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.stock-deductions-head > label { font-weight: 700; }
+.stock-deduction-row { display: grid; grid-template-columns: minmax(150px, 1fr) 110px; align-items: end; gap: 5px; margin-top: 2px; min-width: 0; }
+.stock-deduction-row > label { grid-column: 1 / -1; }
 .stock-deduction-row small { color: var(--muted); font-size: 9px; }
 .stock-deduction-row input { min-width: 0; }
+.paint-allocation { min-width: 0; }
+.paint-allocation span { display: block; margin-bottom: 3px; color: var(--muted); font-size: 9px; white-space: nowrap; }
+.paint-allocation input { width: 100%; }
 .quote-cost-details { margin-top: 6px; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
 .quote-cost-details summary { cursor: pointer; padding: 7px 9px; color: var(--brand); font-size: 11px; font-weight: 700; user-select: none; }
 .quote-cost-details[open] summary { border-bottom: 1px solid var(--line); }
