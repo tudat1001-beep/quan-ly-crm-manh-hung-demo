@@ -43,7 +43,7 @@
 <body>
   <header>
     <h1>Hướng dẫn sử dụng Quản lý CRM Mạnh Hùng</h1>
-    <p>Phiên bản desktop cục bộ 0.8.5 · Báo giá, kho, mua bán, thu chi và CRM Sale B2B</p>
+    <p>Phiên bản desktop cục bộ 0.9.0 · Báo giá, kho, mua bán, thu chi và CRM Sale B2B</p>
   </header>
   <div class="toolbar"><button type="button" onclick="window.print()">In / Lưu PDF hướng dẫn</button></div>
   <div class="layout">
@@ -66,7 +66,7 @@
       <section id="bat-dau">
         <h2>1. Bắt đầu</h2>
         <ol>
-          <li>Cài ứng dụng bằng file <strong>Quan ly CRM Manh Hung Setup 0.8.5.exe</strong>.</li>
+          <li>Cài ứng dụng bằng file <strong>Quan ly CRM Manh Hung Setup 0.9.0.exe</strong>.</li>
           <li>Mở ứng dụng từ màn hình Desktop hoặc Start Menu. Ứng dụng chạy cục bộ, không mở cổng mạng.</li>
           <li>Vào <strong>Cài đặt & sao lưu</strong>, nhập thông tin công ty, tiền tố hóa đơn và số hóa đơn bắt đầu.</li>
           <li>Nếu cần kiểm tra nhanh, bấm <strong>Tạo dữ liệu mẫu</strong>.</li>
@@ -80,7 +80,7 @@
           <thead><tr><th>Danh mục</th><th>Cần nhập</th><th>Dùng ở đâu</th></tr></thead>
           <tbody>
             <tr><td>Hàng hóa</td><td>Mã, tên, đơn vị, giá nhập, giá bán, VAT</td><td>Vật tư thép, từng màu bột sơn và hàng mua bán</td></tr>
-            <tr><td>Khách hàng</td><td>Tên, điện thoại, địa chỉ, MST, người liên hệ</td><td>Báo giá, hóa đơn, công nợ, CRM Sale</td></tr>
+            <tr><td>Khách hàng</td><td>Tên, liên hệ, khu vực miền/tuyến, KCN</td><td>Báo giá, hóa đơn, công nợ, CRM Sale</td></tr>
             <tr><td>Nhà cung cấp</td><td>Tên, liên hệ, địa chỉ, MST</td><td>Đơn đặt hàng, nhập kho, công nợ</td></tr>
             <tr><td>Kho</td><td>Mã, tên, địa chỉ</td><td>Mọi nghiệp vụ nhập, xuất và chuyển kho</td></tr>
             <tr><td>Nhân viên</td><td>Mã, tên, liên hệ</td><td>Sale, chăm sóc khách, tạm ứng</td></tr>
@@ -97,6 +97,9 @@
         <div class="step"><b>4</b><div>Ở mỗi dòng, chọn vật tư chính, sơn màu 1, sơn màu 2; sau đó nhập tên sản phẩm, kích thước và số lượng. Nếu dùng hai màu, bấm <strong>Chia đều 2 màu</strong> hoặc sửa số lượng riêng của từng màu.</div></div>
         <div class="step"><b>5</b><div>Bấm <strong>Chi phí & công thức — bấm để mở</strong> để nhập giá vật liệu, nhân công, định mức sơn, tiêu hao, điện, khấu hao, lợi nhuận và VAT.</div></div>
         <div class="step"><b>6</b><div>Kiểm tra khối lượng và thành tiền luôn hiển thị cuối dòng, rồi bấm <strong>Lưu báo giá</strong>.</div></div>
+        <div class="step"><b>7</b><div>Mở lại <strong>Chi tiết / Sửa</strong> để chèn, mở hoặc xóa bản vẽ/hồ sơ khách hàng theo từng báo giá.</div></div>
+        <p class="formula">Tổng diện tích sơn hiển thị cuối dòng. Vật tư tiêu hao và điện được nhân theo giờ gia công và số lượng.</p>
+        <p>Vào <strong>Hướng dẫn tính giá</strong> để xem công thức chuyển từ Excel; có thể thêm, sửa hoặc xóa ghi chú công thức.</p>
 
         <h3>Công thức chính</h3>
         <p class="formula">Khối lượng thép = dài × rộng × dày × tỷ trọng × số lượng</p>
@@ -172,11 +175,11 @@
         <h2>9. Các phân hệ khác</h2>
         <ul>
           <li><strong>Đơn đặt hàng:</strong> lập đơn mua, nhận toàn bộ để tăng tồn kho.</li>
-          <li><strong>Đề nghị mua:</strong> ghi nhận vật tư, quy cách, bộ phận và mục đích mua; sau đó dùng luồng <strong>Trình duyệt → Duyệt/Từ chối</strong>.</li>
+          <li><strong>Đề nghị mua:</strong> ghi nhận vật tư, quy cách, bộ phận và mục đích mua. Trước lần duyệt đầu, tạo PIN tại Cài đặt; Duyệt/Từ chối đều yêu cầu PIN Admin chính.</li>
           <li><strong>Nhập xuất kho:</strong> nhập mua, bán trực tiếp, chuyển kho, trả nhà cung cấp và khách trả hàng.</li>
           <li><strong>Thu chi & quỹ:</strong> thu khách, chi nhà cung cấp, chuyển quỹ, tạm ứng và hoàn ứng.</li>
           <li><strong>Công nợ:</strong> theo dõi phải thu khách hàng và phải trả nhà cung cấp.</li>
-          <li><strong>CRM Sale B2B:</strong> danh sách tổng hợp khách hàng, lọc theo Sale, lên lịch tuần này/tuần tới, liên kết cơ hội và báo giá. KPI khách hàng chỉ ghi nhận khi báo giá đã Win hoặc đã xuất bán.</li>
+          <li><strong>CRM Sale B2B:</strong> lọc khách hàng theo Sale và khu vực, xuất PDF kế hoạch tuần để đi thị trường; KPI hiển thị thêm phần trăm hoàn thành.</li>
           <li><strong>Bảng dữ liệu:</strong> gõ vào ô “Lọc nhanh”; số dòng và tổng cột số tự cập nhật theo kết quả lọc.</li>
         </ul>
       </section>
@@ -194,7 +197,7 @@
       <section id="demo">
         <h2>11. Dữ liệu mẫu và bản demo Internet</h2>
         <p>Nút <strong>Tạo dữ liệu mẫu</strong> tạo khách hàng, hàng hóa, tồn đầu, báo giá hai màu sơn, đơn mua, thu chi và dữ liệu CRM để kiểm tra. Bấm lại không tạo trùng.</p>
-        <p>Bản demo Internet có cùng giao diện và nghiệp vụ chính nhưng chỉ lưu dữ liệu tạm trong bộ nhớ trình duyệt. Tải lại trang sẽ đưa dữ liệu về mẫu; demo không truy cập dữ liệu thật trên máy.</p>
+        <p>Bản demo Internet có cùng giao diện và nghiệp vụ chính nhưng chỉ lưu dữ liệu tạm trong bộ nhớ trình duyệt. Tải lại trang sẽ đưa dữ liệu về mẫu; PIN Admin demo là <code>1234</code>.</p>
       </section>
 
       <section id="loi">
@@ -212,6 +215,6 @@
       </section>
     </main>
   </div>
-  <footer>Quản lý CRM Mạnh Hùng · Hướng dẫn sử dụng phiên bản 0.8.5</footer>
+  <footer>Quản lý CRM Mạnh Hùng · Hướng dẫn sử dụng phiên bản 0.9.0</footer>
 </body>
 </html>
